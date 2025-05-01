@@ -1,0 +1,1511 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Bet Tracker</title>
+    <style>
+        /* Reset básico */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: #1a1a2e; /* Fundo escuro futurista */
+            color: #e0e0e0; /* Texto claro */
+            line-height: 1.6;
+            padding-bottom: 80px; /* Espaço para o FAB */
+            overflow-x: hidden; /* Evita scroll horizontal causado pelo menu */
+        }
+
+        .container {
+            padding: 20px;
+            max-width: 600px; /* Centraliza e limita largura em telas maiores */
+            margin: 0 auto;
+            transition: transform 0.3s ease-in-out; /* Transição para empurrar conteúdo */
+        }
+
+        h1, h2 {
+            color: #00ffff; /* Ciano vibrante para títulos */
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        /* Header com botão de menu */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background-color: #2c3a47; /* Fundo do header */
+            color: #ffffff;
+            position: sticky; /* Fixa o header no topo */
+            top: 0;
+            z-index: 500; /* Acima do conteúdo, abaixo do menu overlay */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .menu-icon {
+            font-size: 1.8em;
+            cursor: pointer;
+            margin-right: 15px;
+            color: #00ffff; /* Cor do ícone */
+        }
+
+        .header-title {
+             font-size: 1.4em;
+             font-weight: bold;
+             flex-grow: 1; /* Ocupa espaço disponível */
+             text-align: center;
+        }
+
+
+        /* Menu Lateral */
+        .side-menu {
+            position: fixed;
+            top: 0;
+            left: -250px; /* Escondido por padrão */
+            width: 250px;
+            height: 100%;
+            background-color: #3a4750; /* Fundo do menu */
+            color: #e0e0e0;
+            transition: left 0.3s ease-in-out;
+            z-index: 1500; /* Acima de tudo */
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5);
+            padding-top: 60px; /* Espaço para o header */
+        }
+
+        .side-menu.open {
+            left: 0; /* Mostra o menu */
+        }
+
+        .side-menu ul {
+            list-style: none;
+            padding: 20px 0;
+        }
+
+        .side-menu ul li {
+            padding: 15px 20px;
+            border-bottom: 1px solid #4a4e69; /* Separador */
+        }
+
+         .side-menu ul li:last-child {
+             border-bottom: none;
+         }
+
+        .side-menu ul li a {
+            color: #e0e0e0;
+            text-decoration: none;
+            font-size: 1.1em;
+            display: block; /* Faz o padding funcionar na área clicável */
+        }
+
+         .side-menu ul li a:hover {
+             color: #00ffff; /* Cor de hover */
+         }
+
+        /* Overlay para fechar o menu ao clicar fora */
+        .menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: none; /* Escondido por padrão */
+        }
+
+         .menu-overlay.visible {
+             display: block;
+         }
+
+        /* Ajuste do container quando o menu está aberto */
+         body.menu-open .container {
+             transform: translateX(250px); /* Move o conteúdo para a direita */
+         }
+
+
+        /* Estilos das Telas */
+        .screen {
+            display: none; /* Esconde todas as telas por padrão */
+        }
+
+        .screen.active {
+            display: block; /* Mostra a tela ativa */
+        }
+
+        /* Tela Home (Lista de Previsões) */
+        #home-screen h2 {
+             margin-top: 10px; /* Espaço após o header */
+             margin-bottom: 20px;
+             color: #00ffff;
+        }
+
+        #predictions-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .prediction-item {
+            background-color: #2c3a47; /* Fundo dos itens da lista */
+            border-radius: 8px;
+            margin-bottom: 15px;
+            padding: 15px;
+            border: 1px solid #4a4e69; /* Borda sutil */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3); /* Sombra sutil */
+        }
+
+        .prediction-item h3 {
+            color: #e94560; /* Cor de destaque para o jogo */
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .prediction-item p {
+            margin-bottom: 5px;
+            font-size: 0.9em;
+            color: #b8b8d1; /* Cor para detalhes */
+        }
+
+         .prediction-item p strong {
+             color: #ffffff; /* Texto em negrito mais claro */
+         }
+
+        /* Tela Escolher IA */
+        #choose-ai-screen {
+             text-align: center;
+             padding-top: 50px;
+        }
+
+        #choose-ai-screen p {
+             font-size: 1.1em;
+             margin-bottom: 30px;
+             color: #b8b8d1;
+        }
+
+        .ai-choice-button {
+            display: block;
+            width: 80%;
+            max-width: 300px;
+            margin: 15px auto;
+            padding: 15px;
+            font-size: 1.2em;
+            color: #ffffff;
+            background-color: #8e54e9; /* Roxo elétrico */
+            border: none;
+            border-radius: 25px; /* Botões arredondados */
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .ai-choice-button:hover {
+            background-color: #9b63f5;
+        }
+
+        /* Tela Formulário de Cadastro */
+        #add-prediction-screen h2 {
+             margin-top: 10px; /* Espaço após o header */
+            color: #00ffff;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #00ffff; /* Ciano para labels */
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="datetime-local"],
+        .form-group input[type="number"],
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            background-color: #3a4750; /* Fundo dos inputs */
+            border: 1px solid #4a4e69;
+            border-radius: 5px;
+            color: #e0e0e0; /* Texto dos inputs */
+            font-size: 1em;
+        }
+
+         .form-group input[type="datetime-local"] {
+             min-height: 40px; /* Garante tamanho mínimo em alguns browsers */
+         }
+
+
+        .form-group select option {
+            background-color: #3a4750; /* Fundo das opções do select */
+            color: #e0e0e0;
+        }
+
+        /* Estilos para inputs de placar lado a lado - SEMPRE HORIZONTAL */
+        .score-inputs {
+            display: flex; /* Mantém como flexbox */
+            gap: 10px; /* Espaço entre os campos de placar */
+            align-items: center; /* Alinha verticalmente */
+            flex-wrap: wrap; /* Permite quebra, mas tentará manter em linha */
+        }
+
+        .score-inputs label {
+             flex-grow: 0; /* Não deixa o label crescer */
+             margin-bottom: 0; /* Remove margin-bottom padrão do label */
+             font-weight: normal; /* Label do placar pode ser normal */
+             color: #b8b8d1; /* Cor mais suave para labels de placar */
+             font-size: 1em; /* Tamanho normal para labels de placar */
+        }
+
+        .score-inputs input[type="number"] {
+            width: 60px; /* Largura fixa para os campos de placar */
+            text-align: center; /* Centraliza o número */
+            flex-grow: 0; /* Não deixa o input crescer */
+            padding: 8px; /* Padding menor */
+        }
+
+        .score-inputs span {
+            color: #b8b8d1; /* Cor para o hífen */
+        }
+
+
+        .button-group {
+            margin-top: 25px;
+            display: flex;
+            gap: 10px; /* Espaço entre botões */
+            justify-content: flex-end; /* Alinha botões à direita */
+        }
+
+        button {
+            padding: 12px 20px;
+            font-size: 1em;
+            border: none;
+            border-radius: 20px; /* Botões de ação arredondados */
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        button[type="submit"] {
+            background-color: #00adb5; /* Ciano para o botão de salvar */
+            color: #1a1a2e;
+        }
+
+        button[type="submit"]:hover {
+            background-color: #00c3cd;
+        }
+
+        .cancel-button {
+            background-color: #e94560; /* Vermelho/Rosa para cancelar */
+            color: #ffffff;
+        }
+
+        .cancel-button:hover {
+            background-color: #ff5970;
+        }
+
+        /* Tela Dashboard */
+         #dashboard-screen h2 {
+             margin-top: 10px; /* Espaço após o header */
+             color: #00ffff;
+             margin-bottom: 20px;
+         }
+
+         .analysis-item {
+             background-color: #2c3a47;
+             border-radius: 8px;
+             margin-bottom: 15px;
+             padding: 15px;
+             border: 1px solid #4a4e69;
+             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+         }
+
+        .analysis-item h3 {
+            color: #b8b8d1;
+            font-size: 1em;
+            margin-bottom: 10px;
+        }
+
+        .progress-bar-container {
+             width: 100%;
+             background-color: #4a4e69;
+             border-radius: 5px;
+             overflow: hidden; /* Garante que a barra interna fique redonda */
+             height: 20px;
+             margin-top: 5px;
+             position: relative; /* Para posicionar o texto sobre a barra */
+        }
+
+        .progress-bar {
+             height: 100%;
+             width: 0%; /* Largura inicial 0 */
+             border-radius: 5px;
+             transition: width 0.5s ease-in-out;
+             display: flex;
+             align-items: center;
+             justify-content: center; /* Centraliza o texto se estiver dentro */
+             font-size: 0.8em;
+             font-weight: bold;
+             color: #1a1a2e; /* Cor do texto na barra (escuro para contraste) */
+             text-shadow: 0 0 2px rgba(0, 0, 0, 0.5); /* Sombra para legibilidade */
+        }
+
+         /* Cores das barras de progresso */
+         .progress-bar.white { background-color: #e0e0e0; }
+         .progress-bar.yellow { background-color: #ffcc00; }
+         .progress-bar.green { background-color: #00ff00; }
+
+        .progress-text {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            color: #ffffff; /* Cor do texto fora da barra */
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+
+
+        /* Tela Exportar/Importar */
+         #export-import-screen h2 {
+            margin-top: 10px; /* Espaço após o header */
+            color: #00ffff;
+            margin-bottom: 20px;
+         }
+
+        #export-import-screen p {
+            color: #b8b8d1;
+            margin-bottom: 15px;
+        }
+
+        #export-import-screen .button-group {
+            justify-content: flex-start; /* Alinha botões à esquerda */
+             margin-top: 0;
+             margin-bottom: 20px;
+        }
+
+         #import-section {
+             margin-top: 30px;
+             border-top: 1px solid #4a4e69;
+             padding-top: 20px;
+         }
+
+         #import-section label {
+             display: block;
+             margin-bottom: 10px;
+             color: #00ffff;
+             font-weight: bold;
+         }
+
+        #import-file {
+            display: block; /* Ocupa a largura */
+            margin-bottom: 15px;
+            background-color: #3a4750;
+            color: #e0e0e0;
+            border: 1px solid #4a4e69;
+            border-radius: 5px;
+            padding: 10px; /* Adiciona padding */
+            width: 100%; /* Ajusta para 100% */
+        }
+         /* Estilo para o botão de upload que o browser cria */
+         #import-file::file-selector-button {
+            background-color: #8e54e9;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-right: 10px;
+            cursor: pointer;
+         }
+
+
+        /* Floating Action Button (FAB) */
+        #fab {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background-color: #8e54e9; /* Roxo elétrico */
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2em;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+            cursor: pointer;
+            z-index: 1000; /* Garante que fique acima de outros elementos */
+            transition: background-color 0.3s ease;
+        }
+
+        #fab:hover {
+             background-color: #9b63f5;
+        }
+
+        #fab::before {
+            content: '+'; /* Ícone de adição */
+        }
+
+        /* Estado de tela oculta */
+        .hidden {
+            display: none !important;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+         <div class="menu-icon" id="menu-toggle">☰</div> <!-- Ícone de hambúrguer -->
+         <div class="header-title">AI Bet Tracker</div>
+         <div></div><!-- Espaçador para centralizar o título -->
+    </header>
+
+    <!-- Menu Lateral -->
+    <div class="side-menu" id="side-menu">
+        <ul>
+            <li><a href="#" data-screen="home-screen">Home</a></li>
+            <li><a href="#" data-screen="dashboard-screen">Dashboard</a></li>
+            <li><a href="#" data-screen="export-import-screen">Exportar / Importar</a></li>
+            <!-- Adicionar outros itens de menu aqui se necessário -->
+        </ul>
+    </div>
+
+    <!-- Overlay para fechar o menu -->
+    <div class="menu-overlay" id="menu-overlay"></div>
+
+
+    <div class="container">
+        <!-- Home Screen -->
+        <div id="home-screen" class="screen active">
+            <h2>Previsões Registradas</h2>
+            <ul id="predictions-list">
+                <!-- Previsões serão carregadas aqui pelo JavaScript -->
+                 <li class="prediction-item" id="loading-message">Carregando previsões...</li>
+                 <li class="prediction-item" id="no-predictions-message" class="hidden">Nenhuma previsão registrada ainda. Clique no '+' para adicionar.</li>
+            </ul>
+        </div>
+
+        <!-- Choose AI Screen -->
+        <div id="choose-ai-screen" class="screen hidden">
+             <h2>Escolha a IA</h2>
+             <p>Para qual inteligência artificial você deseja registrar uma previsão?</p>
+             <button type="button" class="ai-choice-button" data-ai="Grok" id="grok-btn">Grok</button>
+             <button type="button" class="ai-choice-button" data-ai="OpenAI" id="openai-btn">OpenAI (ChatGPT/GPT-4)</button>
+             <button type="button" class="ai-choice-button" data-ai="Perplexity AI" id="perplexity-btn">Perplexity AI</button>
+              <div class="button-group">
+                 <button type="button" class="cancel-button" id="cancel-choose-ai">Cancelar</button>
+              </div>
+        </div>
+
+        <!-- Add Prediction Form Screen -->
+        <div id="add-prediction-screen" class="screen hidden">
+            <h2 id="form-title">Registrar Previsão</h2>
+            <form id="prediction-form">
+                <div class="form-group">
+                    <label for="home-team">Time da Casa:</label>
+                    <input type="text" id="home-team" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="away-team">Time Visitante:</label>
+                    <input type="text" id="away-team" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="match-datetime">Data e Hora da Partida:</label>
+                    <input type="datetime-local" id="match-datetime" required>
+                </div>
+
+                 <div class="form-group">
+                     <label for="favorite-team-select">Time favorito (IA):</label>
+                     <select id="favorite-team-select" required>
+                          <option value="">-- Selecione --</option>
+                          <option value="Time da Casa">Time da Casa</option>
+                          <option value="Time Visitante">Time Visitante</option>
+                          <option value="Nenhum">Nenhum</option>
+                          <option value="Nao Informado">Não Informado</option>
+                     </select>
+                 </div>
+
+                 <!-- IA Utilizada - Exibido via JS -->
+                 <div class="form-group">
+                     <label>IA Utilizada:</label>
+                     <p id="selected-ai-display" style="margin-top: 5px; color: #b8b8d1;"></p>
+                 </div>
+
+
+                <div class="form-group">
+                    <label>Placar Intervalo (HT):</label>
+                     <div class="score-inputs">
+                         <label for="ht-score-home">Casa:</label>
+                         <input type="number" id="ht-score-home" min="0">
+                         <span>-</span>
+                         <label for="ht-score-away">Fora:</label>
+                         <input type="number" id="ht-score-away" min="0">
+                     </div>
+                </div>
+
+                 <div class="form-group">
+                    <label for="ft-result">Resultado Final (1X2):</label>
+                    <select id="ft-result" required>
+                        <option value="">-- Selecione --</option>
+                        <option value="Vitória Casa">Vitória do Time da Casa (1)</option>
+                        <option value="Empate">Empate (X)</option>
+                        <option value="Vitória Visitante">Vitória do Time Visitante (2)</option>
+                         <option value="Nao Informado">Não Informado</option>
+                    </select>
+                </div>
+
+                 <div class="form-group">
+                    <label>Placar Final (FT):</label>
+                     <div class="score-inputs">
+                         <label for="ft-score-home">Casa:</label>
+                         <input type="number" id="ft-score-home" min="0">
+                         <span>-</span>
+                         <label for="ft-score-away">Fora:</label>
+                         <input type="number" id="ft-score-away" min="0">
+                     </div>
+                     <small style="color: #b8b8d1;">Placar previsto pela IA.</small>
+                </div>
+
+
+                <div class="form-group">
+                    <label for="total-goals">Total de Gols (Acima/Abaixo de):</label>
+                    <select id="total-goals">
+                        <option value="">-- Selecione --</option>
+                        <option value="Acima de 0.5">Acima de 0.5</option>
+                        <option value="Abaixo de 0.5">Abaixo de 0.5</option>
+                        <option value="Acima de 1.5">Acima de 1.5</option>
+                        <option value="Abaixo de 1.5">Abaixo de 1.5</option>
+                        <option value="Acima de 2.5">Acima de 2.5</option>
+                        <option value="Abaixo de 2.5">Abaixo de 2.5</option>
+                        <option value="Acima de 3.5">Acima de 3.5</option>
+                        <option value="Abaixo de 3.5">Abaixo de 3.5</option>
+                         <option value="Nao Informado">Não Informado</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="btts">Ambas as Equipas Marcam (BTTS):</label>
+                    <select id="btts">
+                        <option value="">-- Selecione --</option>
+                        <option value="Sim">Sim</option>
+                        <option value="Não">Não</option>
+                         <option value="Nao Informado">Não Informado</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="first-scorer-select">Primeira Equipa a Marcar:</label>
+                     <select id="first-scorer-select">
+                        <option value="">-- Selecione --</option>
+                        <option value="Time da Casa">Time da Casa</option>
+                        <option value="Time Visitante">Time Visitante</option>
+                        <option value="Sem Gols">Sem Gols</option>
+                         <option value="Nao Informado">Não Informado</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="first-goal-minute-select">Minuto do primeiro gol:</label>
+                    <select id="first-goal-minute-select">
+                        <option value="">-- Selecione --</option>
+                        <option value="1-14">1-14'</option>
+                        <option value="15-29">15-29'</option>
+                        <option value="30-45">30-45'</option>
+                        <option value="46-60">46-60'</option>
+                        <option value="61-75">61-75'</option>
+                        <option value="76-90+">76-90+'</option>
+                        <option value="Sem Gols">Sem Gols</option>
+                         <option value="Nao Informado">Não Informado</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="second-half-goal-75">Gol no segundo tempo (antes/após 75'):</label>
+                    <select id="second-half-goal-75">
+                        <option value="">-- Selecione --</option>
+                        <option value="Antes dos 75'">Antes dos 75'</option>
+                        <option value="Após os 75'">Após os 75'</option>
+                        <option value="Nenhum Gol no Segundo Tempo">Nenhum Gol no Segundo Tempo</option>
+                         <option value="Nao Informado">Não Informado</option>
+                    </select>
+                </div>
+
+                <div class="button-group">
+                    <button type="button" class="cancel-button" id="cancel-add-prediction">Cancelar</button>
+                    <button type="submit">Registrar Previsão</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Dashboard Screen -->
+         <div id="dashboard-screen" class="screen hidden">
+             <h2>Dashboard de Previsões</h2>
+              <p style="color: #ffcc00; font-size: 0.9em; margin-bottom: 20px;">* Análises baseadas nos *tipos de previsões registradas*, não na precisão real dos resultados dos jogos.</p>
+             <div id="analysis-container">
+                 <!-- Itens de análise serão carregados aqui pelo JavaScript -->
+                  <div class="analysis-item" id="loading-dashboard-message">Carregando análises...</div>
+             </div>
+         </div>
+
+        <!-- Export / Import Screen -->
+         <div id="export-import-screen" class="screen hidden">
+             <h2>Exportar / Importar Dados</h2>
+
+             <h3>Exportar Dados</h3>
+             <p>Exporte todas as previsões registradas para um arquivo CSV.</p>
+             <div class="button-group">
+                 <button type="button" id="export-csv-btn">Exportar para CSV</button>
+             </div>
+
+             <div id="import-section">
+                  <h3>Importar Dados</h3>
+                  <p>Selecione um arquivo CSV para importar previsões. O arquivo deve seguir o formato de exportação.</p>
+                 <label for="import-file">Escolher arquivo CSV:</label>
+                 <input type="file" id="import-file" accept=".csv">
+                 <div class="button-group">
+                      <button type="button" id="import-csv-btn">Importar</button>
+                 </div>
+                  <p style="color: #ffcc00; font-size: 0.9em; margin-top: 15px;">* Importação adiciona dados existentes. Dados duplicados (baseado em todos os campos) podem ser criados.</p>
+             </div>
+         </div>
+
+    </div>
+
+    <!-- Floating Action Button -->
+    <div id="fab">+</div>
+
+
+    <script>
+        const DB_NAME = 'AIBetTrackerDB';
+        const DB_VERSION = 3; // Mantém a versão, pois a estrutura de dados não mudou desde a última atualização
+        const OBJECT_STORE_NAME = 'predictions';
+
+        let db;
+        let currentAI = null; // Variável para guardar a IA escolhida
+
+        // --- Referências de Elementos do DOM ---
+        const body = document.body;
+        const container = document.querySelector('.container');
+        const menuToggle = document.getElementById('menu-toggle');
+        const sideMenu = document.getElementById('side-menu');
+        const menuOverlay = document.getElementById('menu-overlay');
+        const menuLinks = sideMenu.querySelectorAll('a'); // Links dentro do menu
+
+        const homeScreen = document.getElementById('home-screen');
+        const chooseAiScreen = document.getElementById('choose-ai-screen');
+        const addPredictionScreen = document.getElementById('add-prediction-screen');
+        const dashboardScreen = document.getElementById('dashboard-screen');
+        const exportImportScreen = document.getElementById('export-import-screen');
+
+        const fab = document.getElementById('fab');
+        const predictionsList = document.getElementById('predictions-list');
+        const loadingMessage = document.getElementById('loading-message');
+        const noPredictionsMessage = document.getElementById('no-predictions-message');
+        const dashboardLoadingMessage = document.getElementById('loading-dashboard-message');
+
+        // Botões de escolha de IA
+        const grokBtn = document.getElementById('grok-btn');
+        const openaiBtn = document.getElementById('openai-btn');
+        const perplexityBtn = document.getElementById('perplexity-btn');
+        const cancelChooseAiBtn = document.getElementById('cancel-choose-ai');
+
+        // Formulário e seus campos
+        const predictionForm = document.getElementById('prediction-form');
+        const formTitle = document.getElementById('form-title');
+        const selectedAiDisplay = document.getElementById('selected-ai-display');
+        const homeTeamInput = document.getElementById('home-team');
+        const awayTeamInput = document.getElementById('away-team');
+        const matchDatetimeInput = document.getElementById('match-datetime');
+
+        const favoriteTeamSelect = document.getElementById('favorite-team-select');
+        const htScoreHomeInput = document.getElementById('ht-score-home');
+        const htScoreAwayInput = document.getElementById('ht-score-away');
+        const ftResultSelect = document.getElementById('ft-result');
+        const ftScoreHomeInput = document.getElementById('ft-score-home');
+        const ftScoreAwayInput = document.getElementById('ft-score-away');
+        const totalGoalsSelect = document.getElementById('total-goals');
+        const bttsSelect = document.getElementById('btts');
+        const firstScorerSelect = document.getElementById('first-scorer-select');
+        const firstGoalMinuteSelect = document.getElementById('first-goal-minute-select');
+        const secondHalfGoal75Select = document.getElementById('second-half-goal-75');
+        const cancelAddPredictionBtn = document.getElementById('cancel-add-prediction');
+
+        // Dashboard elements
+        const analysisContainer = document.getElementById('analysis-container');
+
+        // Export/Import elements
+        const exportCsvBtn = document.getElementById('export-csv-btn');
+        const importFile = document.getElementById('import-file');
+        const importCsvBtn = document.getElementById('import-csv-btn');
+
+
+        // --- Funções de Gerenciamento de Tela e Menu ---
+        function showScreen(screenToShow) {
+            // Garante que o menu e o overlay estejam fechados antes de mostrar a nova tela
+            closeMenu();
+
+            const screens = [homeScreen, chooseAiScreen, addPredictionScreen, dashboardScreen, exportImportScreen];
+            screens.forEach(screen => {
+                screen.classList.add('hidden'); // Esconde TODAS as telas
+                screen.classList.remove('active');
+            });
+
+            screenToShow.classList.remove('hidden'); // Mostra a tela ALVO
+            screenToShow.classList.add('active');
+
+            // Oculta o FAB nas telas que não são a Home
+            if (screenToShow === homeScreen) {
+                fab.classList.remove('hidden');
+            } else {
+                fab.classList.add('hidden');
+            }
+
+            // Se for o dashboard, atualiza os dados
+            if (screenToShow === dashboardScreen) {
+                 updateDashboard();
+            }
+
+             // Se for a tela de adicionar, reseta o formulário (se vier da escolha de IA)
+             // Não resetar se já estiver na tela de adicionar
+             if (screenToShow === addPredictionScreen && !currentAI) {
+                  resetForm(); // Reseta apenas se não veio da escolha de IA
+             }
+        }
+
+        function toggleMenu() {
+            body.classList.toggle('menu-open');
+            sideMenu.classList.toggle('open');
+            menuOverlay.classList.toggle('visible');
+        }
+
+        function closeMenu() {
+             body.classList.remove('menu-open');
+             sideMenu.classList.remove('open');
+             menuOverlay.classList.remove('visible');
+        }
+
+
+        function resetForm() {
+            predictionForm.reset();
+            selectedAiDisplay.textContent = '';
+            // currentAI = null; // Não reseta currentAI aqui, pois ele é definido na escolha da IA
+             // Reseta selects para a primeira opção (vazia se houver)
+            if(favoriteTeamSelect.options.length > 0) favoriteTeamSelect.selectedIndex = 0;
+            if(ftResultSelect.options.length > 0) ftResultSelect.selectedIndex = 0;
+            if(totalGoalsSelect.options.length > 0) totalGoalsSelect.selectedIndex = 0;
+            if(bttsSelect.options.length > 0) bttsSelect.selectedIndex = 0;
+            if(firstScorerSelect.options.length > 0) firstScorerSelect.selectedIndex = 0;
+            if(firstGoalMinuteSelect.options.length > 0) firstGoalMinuteSelect.selectedIndex = 0;
+            if(secondHalfGoal75Select.options.length > 0) secondHalfGoal75Select.selectedIndex = 0;
+
+             // Reseta campos numéricos para vazio
+             htScoreHomeInput.value = '';
+             htScoreAwayInput.value = '';
+             ftScoreHomeInput.value = '';
+             ftScoreAwayInput.value = '';
+             //firstGoalMinuteInput.value = ''; // Este campo foi removido/substituído pelo select
+        }
+
+        // --- Funções do IndexedDB ---
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                request.onupgradeneeded = (event) => {
+                    db = event.target.result;
+                    const oldVersion = event.oldVersion;
+
+                    console.log(`IndexedDB: Upgrade needed from version ${oldVersion} to ${DB_VERSION}`);
+
+                    // Garante que a store existe na versão mais recente
+                    if (!db.objectStoreNames.contains(OBJECT_STORE_NAME)) {
+                         db.createObjectStore(OBJECT_STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                         console.log(`IndexedDB: Object Store '${OBJECT_STORE_NAME}' created.`);
+                    } else {
+                        console.log(`IndexedDB: Object Store '${OBJECT_STORE_NAME}' already exists.`);
+                        // Se a store já existe e a versão foi incrementada, o IndexedDB
+                        // não a recriará automaticamente. Novas colunas/tipos na versão
+                        // do código JavaScript serão tratadas como undefined ou com valores padrão
+                        // ao carregar dados antigos, e novos dados serão salvos com a nova estrutura.
+                        // Uma migração de dados real seria implementada aqui se fosse crucial
+                        // converter formatos antigos para novos.
+                    }
+                };
+
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    console.log(`IndexedDB: Opened DB '${DB_NAME}', Version ${DB_VERSION}.`);
+                    resolve(db);
+                };
+
+                request.onerror = (event) => {
+                    console.error("IndexedDB error:", event.target.errorCode, event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        async function addPrediction(predictionData) {
+            if (!db) {
+                console.error("Database not open.");
+                alert("Erro: Banco de dados não disponível.");
+                return;
+            }
+
+            const transaction = db.transaction(OBJECT_STORE_NAME, 'readwrite');
+            const objectStore = transaction.objectStore(OBJECT_STORE_NAME);
+
+             // ID será gerado automaticamente por autoIncrement
+             // predictionData.id = Date.now(); // Não precisa se usar autoIncrement
+
+             // Adiciona timestamp de criação
+             predictionData.createdAt = Date.now();
+
+
+            const request = objectStore.add(predictionData);
+
+            request.onsuccess = () => {
+                console.log("Prediction added:", predictionData);
+                alert("Previsão registrada com sucesso!");
+                resetForm(); // Reseta o formulário *após* salvar
+                currentAI = null; // Limpa a IA selecionada para garantir nova escolha no próximo add
+                showScreen(homeScreen); // Volta para a Home
+                loadPredictions(); // Recarrega a lista na home
+            };
+
+            request.onerror = (event) => {
+                console.error("Error adding prediction:", event.target.error);
+                alert("Erro ao registrar previsão.");
+            };
+        }
+
+        async function getAllPredictions() {
+            if (!db) {
+                console.error("Database not open.");
+                return [];
+            }
+
+            const transaction = db.transaction(OBJECT_STORE_NAME, 'readonly');
+            const objectStore = transaction.objectStore(OBJECT_STORE_NAME);
+            const request = objectStore.getAll();
+
+            return new Promise((resolve, reject) => {
+                request.onsuccess = (event) => {
+                    resolve(event.target.result);
+                };
+                request.onerror = (event) => {
+                    console.error("Error fetching predictions:", event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        async function loadPredictions() {
+            predictionsList.innerHTML = ''; // Limpa a lista atual
+            predictionsList.appendChild(loadingMessage); // Mostra mensagem de carregando
+            loadingMessage.classList.remove('hidden');
+            noPredictionsMessage.classList.add('hidden');
+
+            try {
+                const predictions = await getAllPredictions();
+
+                predictionsList.innerHTML = ''; // Limpa a lista após carregar
+                if (predictions.length === 0) {
+                    noPredictionsMessage.classList.remove('hidden');
+                    predictionsList.appendChild(noPredictionsMessage);
+                } else {
+                    noPredictionsMessage.classList.add('hidden');
+                    // Ordena por data (mais recente primeiro)
+                    predictions.sort((a, b) => new Date(b.matchDatetime || 0) - new Date(a.matchDatetime || 0));
+
+                    predictions.forEach(prediction => {
+                        const listItem = document.createElement('li');
+                        listItem.classList.add('prediction-item');
+
+                         // Formatar data/hora para exibição
+                         const matchDate = prediction.matchDatetime ? new Date(prediction.matchDatetime) : null;
+                         const formattedDate = matchDate ? matchDate.toLocaleDateString('pt-BR', {
+                             year: 'numeric', month: '2-digit', day: '2-digit'
+                         }) : 'Não informada';
+                         const formattedTime = matchDate ? matchDate.toLocaleTimeString('pt-BR', {
+                             hour: '2-digit', minute: '2-digit'
+                         }) : '';
+
+
+                        // Lida com campos que podem não existir em dados salvos em versões anteriores
+                        const htScoreDisplay = (prediction.htScoreHome !== null && prediction.htScoreHome !== undefined && prediction.htScoreAway !== null && prediction.htScoreAway !== undefined)
+                                             ? `${prediction.htScoreHome !== null ? prediction.htScoreHome : '?'}-${prediction.htScoreAway !== null ? prediction.htScoreAway : '?'}`
+                                             : (prediction.htScore !== null && prediction.htScore !== undefined ? prediction.htScore : 'Não Informado'); // fallback para formato antigo se existir
+
+                        const ftScoreDisplay = (prediction.ftScoreHome !== null && prediction.ftScoreHome !== undefined && prediction.ftScoreAway !== null && prediction.ftScoreAway !== undefined)
+                                              ? `${prediction.ftScoreHome !== null ? prediction.ftScoreHome : '?'}-${prediction.ftScoreAway !== null ? prediction.ftScoreAway : '?'}`
+                                              : 'Não Informado';
+
+                        const favoriteTeamDisplay = prediction.favoriteTeam || 'Não Informado';
+                        const ftResultDisplay = prediction.ftResult || 'Não Informado';
+                        const totalGoalsDisplay = prediction.totalGoals || 'Não Informado';
+                        const bttsDisplay = prediction.btts || 'Não Informado';
+                        const firstScorerDisplay = prediction.firstScorer || 'Não Informado';
+                         // Minuto do primeiro gol: Usa o valor do select da v3+ ou 'Não Informado'
+                         const firstGoalMinuteDisplay = prediction.firstGoalMinuteSelect || 'Não Informado';
+
+
+                         const secondHalfGoal75Display = prediction.secondHalfGoal75 || 'Não Informado';
+
+
+                        listItem.innerHTML = `
+                            <h3>${prediction.homeTeam || 'Time da Casa Não Informado'} vs ${prediction.awayTeam || 'Time Visitante Não Informado'}</h3>
+                            <p><strong>Data/Hora:</strong> ${formattedDate} ${formattedTime}</p>
+                            <p><strong>IA Utilizada:</strong> ${prediction.ai || 'Não Informada'}</p>
+                            <p><strong>Favorito (IA):</strong> ${favoriteTeamDisplay}</p>
+                            <p><strong>Placar HT Previsto:</strong> ${htScoreDisplay}</p>
+                            <p><strong>Resultado FT (1X2) Previsto:</strong> ${ftResultDisplay}</p>
+                             <p><strong>Placar FT Previsto:</strong> ${ftScoreDisplay}</p>
+                            <p><strong>Total Gols Previsto:</strong> ${totalGoalsDisplay}</p>
+                            <p><strong>BTTS Previsto:</strong> ${bttsDisplay}</p>
+                            <p><strong>Primeiro Gol Previsto:</strong> ${firstScorerDisplay}</p>
+                            <p><strong>Minuto 1º Gol Previsto:</strong> ${firstGoalMinuteDisplay}</p>
+                            <p><strong>Gol 2º Tempo (>75') Previsto:</strong> ${secondHalfGoal75Display}</p>
+                        `;
+                        predictionsList.appendChild(listItem);
+                    });
+                }
+            } catch (error) {
+                console.error("Failed to load predictions:", error);
+                predictionsList.innerHTML = '<li class="prediction-item">Erro ao carregar previsões.</li>';
+            } finally {
+                 loadingMessage.classList.add('hidden');
+            }
+        }
+
+        // --- Funções do Dashboard ---
+        async function updateDashboard() {
+             analysisContainer.innerHTML = ''; // Limpa análises antigas
+             analysisContainer.appendChild(dashboardLoadingMessage);
+             dashboardLoadingMessage.classList.remove('hidden');
+
+            try {
+                const predictions = await getAllPredictions();
+                const totalPredictions = predictions.length;
+
+                if (totalPredictions === 0) {
+                     analysisContainer.innerHTML = '<div class="analysis-item"><p style="text-align: center; color: #b8b8d1;">Nenhuma previsão registrada para analisar.</p></div>';
+                     return;
+                }
+
+                // Objeto para armazenar contagens para diferentes análises
+                const analysisCounts = {
+                    aiCount: {},
+                    ftResultCount: {},
+                    totalGoalsCount: {},
+                    bttsCount: {},
+                    firstScorerCount: {},
+                    firstGoalMinuteCount: {}, // Para o select de minuto
+                    secondHalfGoal75Count: {},
+                    favoriteTeamCount: {},
+                    ftScoreHomeDistribution: { '0': 0, '1': 0, '2+': 0 }, // Exemplo simples de distribuição de score home FT
+                    ftScoreAwayDistribution: { '0': 0, '1': 0, '2+': 0 }, // Exemplo simples de distribuição de score away FT
+                    htScoreHomeDistribution: { '0': 0, '1': 0, '2+': 0 }, // Exemplo simples de distribuição de score home HT
+                    htScoreAwayDistribution: { '0': 0, '1': 0, '2+': 0 }, // Exemplo simples de distribuição de score away HT
+                };
+
+                // Inicializa contadores para todos os valores possíveis dos selects para garantir que apareçam mesmo com 0
+                 ['Grok', 'OpenAI', 'Perplexity AI'].forEach(ai => analysisCounts.aiCount[ai] = 0);
+                 ['Vitória Casa', 'Empate', 'Vitória Visitante', 'Nao Informado'].forEach(res => analysisCounts.ftResultCount[res] = 0);
+                 ['Acima de 0.5','Abaixo de 0.5','Acima de 1.5','Abaixo de 1.5','Acima de 2.5','Abaixo de 2.5','Acima de 3.5','Abaixo de 3.5','Nao Informado'].forEach(goals => analysisCounts.totalGoalsCount[goals] = 0); // Adicionado todas as opções
+                 ['Sim', 'Não', 'Nao Informado'].forEach(btts => analysisCounts.bttsCount[btts] = 0);
+                 ['Time da Casa', 'Time Visitante', 'Sem Gols', 'Nao Informado'].forEach(scorer => analysisCounts.firstScorerCount[scorer] = 0);
+                 ['1-14', '15-29', '30-45', '46-60', '61-75', '76-90+', 'Sem Gols', 'Nao Informado'].forEach(minute => analysisCounts.firstGoalMinuteCount[minute] = 0); // Novo select de minuto
+                 ['Antes dos 75\'', 'Após os 75\'', 'Nenhum Gol no Segundo Tempo', 'Nao Informado'].forEach(goal75 => analysisCounts.secondHalfGoal75Count[goal75] = 0);
+                 ['Time da Casa', 'Time Visitante', 'Nenhum', 'Nao Informado'].forEach(fav => analysisCounts.favoriteTeamCount[fav] = 0);
+
+
+                predictions.forEach(p => {
+                    // Contagem por IA
+                    analysisCounts.aiCount[p.ai || 'Não Informada'] = (analysisCounts.aiCount[p.ai || 'Não Informada'] || 0) + 1;
+                    // Contagem por Resultado Final (1X2)
+                    analysisCounts.ftResultCount[p.ftResult || 'Nao Informado'] = (analysisCounts.ftResultCount[p.ftResult || 'Nao Informado'] || 0) + 1;
+                    // Contagem por Total de Gols
+                    analysisCounts.totalGoalsCount[p.totalGoals || 'Nao Informado'] = (analysisCounts.totalGoalsCount[p.totalGoals || 'Nao Informado'] || 0) + 1;
+                    // Contagem por BTTS
+                    analysisCounts.bttsCount[p.btts || 'Nao Informado'] = (analysisCounts.bttsCount[p.btts || 'Nao Informado'] || 0) + 1;
+                    // Contagem por Primeira Equipa a Marcar
+                    analysisCounts.firstScorerCount[p.firstScorer || 'Nao Informado'] = (analysisCounts.firstScorerCount[p.firstScorer || 'Nao Informado'] || 0) + 1;
+                     // Contagem por Minuto do Primeiro Gol (usando o valor do select)
+                     analysisCounts.firstGoalMinuteCount[p.firstGoalMinuteSelect || 'Nao Informado'] = (analysisCounts.firstGoalMinuteCount[p.firstGoalMinuteSelect || 'Nao Informado'] || 0) + 1;
+                    // Contagem por Gol no Segundo Tempo (>75')
+                    analysisCounts.secondHalfGoal75Count[p.secondHalfGoal75 || 'Nao Informado'] = (analysisCounts.secondHalfGoal75Count[p.secondHalfGoal75 || 'Nao Informado'] || 0) + 1;
+                     // Contagem por Time Favorito
+                     analysisCounts.favoriteTeamCount[p.favoriteTeam || 'Nao Informado'] = (analysisCounts.favoriteTeamCount[p.favoriteTeam || 'Nao Informado'] || 0) + 1;
+
+                     // Distribuição simples de FT Scores (Casa/Fora)
+                     if (p.ftScoreHome !== null && p.ftScoreHome !== undefined) {
+                         if (p.ftScoreHome === 0) analysisCounts.ftScoreHomeDistribution['0']++;
+                         else if (p.ftScoreHome === 1) analysisCounts.ftScoreHomeDistribution['1']++;
+                         else analysisCounts.ftScoreHomeDistribution['2+']++;
+                     }
+                     if (p.ftScoreAway !== null && p.ftScoreAway !== undefined) {
+                          if (p.ftScoreAway === 0) analysisCounts.ftScoreAwayDistribution['0']++;
+                         else if (p.ftScoreAway === 1) analysisCounts.ftScoreAwayDistribution['1']++;
+                         else analysisCounts.ftScoreAwayDistribution['2+']++;
+                     }
+                      // Distribuição simples de HT Scores (Casa/Fora)
+                      // Nota: Dados da v1 com HT Score string '1-0' não são contados aqui.
+                     if (p.htScoreHome !== null && p.htScoreHome !== undefined) {
+                         if (p.htScoreHome === 0) analysisCounts.htScoreHomeDistribution['0']++;
+                         else if (p.htScoreHome === 1) analysisCounts.htScoreHomeDistribution['1']++;
+                         else analysisCounts.htScoreHomeDistribution['2+']++;
+                     }
+                     if (p.htScoreAway !== null && p.htScoreAway !== undefined) {
+                          if (p.htScoreAway === 0) analysisCounts.htScoreAwayDistribution['0']++;
+                         else if (p.htScoreAway === 1) analysisCounts.htScoreAwayDistribution['1']++;
+                         else analysisCounts.htScoreAwayDistribution['2+']++;
+                     }
+                });
+
+                analysisContainer.innerHTML = ''; // Limpa o "Carregando..."
+
+
+                 // Função auxiliar para criar um item de análise
+                 function createAnalysisItem(title, value, total, valueLabel) {
+                     const percentage = total > 0 ? (value / total) * 100 : 0;
+                     let colorClass = 'white'; // Base
+                     if (percentage > 30) colorClass = 'yellow'; // Amarelo acima de 30%
+                     if (percentage > 89) colorClass = 'green'; // Verde acima de 89% (conforme solicitado)
+
+
+                     const itemDiv = document.createElement('div');
+                     itemDiv.classList.add('analysis-item');
+                     itemDiv.innerHTML = `
+                         <h3>${title}: ${valueLabel || value} (${value} de ${total})</h3>
+                         <div class="progress-bar-container">
+                             <div class="progress-bar ${colorClass}" style="width: ${percentage.toFixed(1)}%;"></div>
+                             <div class="progress-text">${percentage.toFixed(1)}%</div>
+                         </div>
+                     `;
+                     return itemDiv;
+                 }
+
+                 // Adicionar itens de análise ao container - Total de Previsões
+                 analysisContainer.appendChild(createAnalysisItem('Total de Previsões Registradas', totalPredictions, totalPredictions, totalPredictions));
+
+                 // Análises Por Categoria (Garante ordem e ignora 'Não Informado' se a contagem for 0)
+                 const analysisCategories = {
+                     'Por IA': analysisCounts.aiCount,
+                     'Por Resultado Final (1X2) Previsto': analysisCounts.ftResultCount,
+                     'Por Total Gols Previsto': analysisCounts.totalGoalsCount,
+                     'Por BTTS Previsto': analysisCounts.bttsCount,
+                     'Por Primeiro Gol Previsto': analysisCounts.firstScorerCount,
+                     'Por Minuto 1º Gol Previsto': analysisCounts.firstGoalMinuteCount,
+                     'Por Gol no 2º Tempo (>75\') Previsto': analysisCounts.secondHalfGoal75Count,
+                     'Por Time Favorito Previsto': analysisCounts.favoriteTeamCount,
+                     'Freq. Placar HT Casa': analysisCounts.htScoreHomeDistribution,
+                     'Freq. Placar HT Fora': analysisCounts.htScoreAwayDistribution,
+                      'Freq. Placar FT Casa': analysisCounts.ftScoreHomeDistribution,
+                     'Freq. Placar FT Fora': analysisCounts.ftScoreAwayDistribution,
+                 };
+
+                 for (const categoryTitle in analysisCategories) {
+                     const counts = analysisCategories[categoryTitle];
+                     // Ordena as chaves para exibição consistente (exceto 'Não Informado' no fim)
+                      const sortedKeys = Object.keys(counts).sort((a, b) => {
+                          if (a === 'Nao Informado') return 1;
+                          if (b === 'Nao Informado') return -1;
+                          return String(a).localeCompare(String(b));
+                      });
+
+                     sortedKeys.forEach(key => {
+                         const count = counts[key];
+                         if (count > 0) { // Só exibe se houver pelo menos 1 ocorrência
+                            analysisContainer.appendChild(createAnalysisItem(categoryTitle, count, totalPredictions, key));
+                         }
+                     });
+                 }
+
+                // Contando o número de itens de análise gerados. Se forem menos de 15,
+                // talvez adicionar mais quebras por IA ou agrupar menos os gols, etc.
+                // Mas com todas essas categorias por valor, é provável que já tenhamos > 15 na prática.
+                // O importante é que as análises estejam lá.
+
+            } catch (error) {
+                console.error("Failed to update dashboard:", error);
+                analysisContainer.innerHTML = '<div class="analysis-item"><p style="text-align: center; color: #ffcc00;">Erro ao carregar dados para o Dashboard.</p></div>';
+            } finally {
+                 dashboardLoadingMessage.classList.add('hidden');
+            }
+        }
+
+
+        // --- Funções de Exportar/Importar ---
+
+        function escapeCsvField(field) {
+            if (field === null || field === undefined) return '';
+            // Converte para string
+            let stringField = String(field);
+             // Se o campo contém vírgulas, aspas duplas ou quebras de linha, envolva-o em aspas duplas
+            if (stringField.includes(',') || stringField.includes('"') || stringField.includes('\n') || stringField.includes('\r')) {
+                 // Escapa as aspas duplas internas duplicando-as
+                 stringField = stringField.replace(/"/g, '""');
+                 return `"${stringField}"`;
+            }
+            return stringField;
+        }
+
+
+        async function exportPredictionsCsv() {
+             try {
+                const predictions = await getAllPredictions();
+
+                if (predictions.length === 0) {
+                    alert("Nenhuma previsão para exportar.");
+                    return;
+                }
+
+                // Define os cabeçalhos do CSV (deve corresponder aos campos do objeto prediction)
+                // Incluindo 'createdAt' e excluindo 'id' e 'timestamp' (autoIncrement e timestamp antigo)
+                const headers = [
+                     'ai', 'homeTeam', 'awayTeam', 'matchDatetime', 'favoriteTeam',
+                     'htScoreHome', 'htScoreAway', 'ftResult', 'ftScoreHome', 'ftScoreAway',
+                     'totalGoals', 'btts', 'firstScorer', 'firstGoalMinuteSelect', 'secondHalfGoal75',
+                     'createdAt' // Inclui o timestamp de criação
+                ];
+
+                // Cria as linhas de dados
+                const rows = predictions.map(p => {
+                    return headers.map(header => escapeCsvField(p[header])).join(',');
+                });
+
+                // Junta cabeçalhos e linhas
+                const csvContent = [headers.join(','), ...rows].join('\n');
+
+                // Cria um Blob e um URL para download
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+
+                // Cria um link temporário para download
+                const link = document.createElement('a');
+                link.setAttribute('href', url);
+                link.setAttribute('download', 'ai_bet_predictions.csv');
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+
+                // Dispara o download
+                link.click();
+
+                // Limpa o link e o URL temporário
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+
+                console.log("Predictions exported successfully.");
+                 alert("Dados exportados para ai_bet_predictions.csv");
+
+             } catch (error) {
+                 console.error("Error exporting predictions:", error);
+                 alert("Erro ao exportar dados.");
+             }
+        }
+
+         function parseCsv(csvString) {
+            // Regex simples para dividir linhas, considerando quebras de linha dentro de campos quotados
+             const lines = csvString.split(/\r\n|\n/);
+             if (lines.length === 0) return [];
+             const headers = lines[0].split(',').map(h => h.trim()); // Assume que a primeira linha é o cabeçalho
+
+            const data = [];
+             // Regex para separar campos
+             const csvRegex = /"((?:[^"\\]|\\.)*)"|([^,\r\n]*)(?:,|$)/g; // Melhor regex para lidar com aspas e vírgulas
+
+            for (let i = 1; i < lines.length; i++) {
+                if (lines[i].trim() === '') continue; // Ignora linhas vazias
+
+                const fields = [];
+                let match;
+                let line = lines[i];
+                // Percorre a linha capturando campos
+                while ((match = csvRegex.exec(line)) !== null) {
+                    // match[1] é o conteúdo entre aspas (se houver), match[2] é o conteúdo sem aspas
+                     let field = match[1] !== undefined ? match[1].replace(/""/g, '"') : match[2];
+                     fields.push(field);
+                      // Se a última captura foi o final da linha, sai
+                     if (match[0].endsWith(',')) {
+                          // Continua loop
+                     } else {
+                          // Fim da linha
+                          break;
+                     }
+                }
+
+
+                const rowData = {};
+                 // Mapeia campos para o cabeçalho
+                headers.forEach((header, index) => {
+                     rowData[header] = fields[index] !== undefined ? fields[index] : ''; // Trata campos ausentes
+                });
+                data.push(rowData);
+            }
+            return data;
+         }
+
+        async function importPredictionsCsv(file) {
+             if (!file) {
+                 alert("Por favor, selecione um arquivo para importar.");
+                 return;
+             }
+
+            const reader = new FileReader();
+
+            reader.onload = async (event) => {
+                try {
+                    const csvString = event.target.result;
+                    const importedData = parseCsv(csvString);
+
+                    if (importedData.length === 0) {
+                        alert("Nenhum dado válido encontrado no arquivo CSV.");
+                        importFile.value = ''; // Limpa o input do arquivo
+                        return;
+                    }
+
+                    if (!db) {
+                         alert("Erro: Banco de dados não disponível para importação.");
+                         importFile.value = ''; // Limpa o input do arquivo
+                         return;
+                    }
+
+                     const transaction = db.transaction(OBJECT_STORE_NAME, 'readwrite');
+                     const objectStore = transaction.objectStore(OBJECT_STORE_NAME);
+
+                     let addedCount = 0;
+                     let errorCount = 0;
+                     let totalToImport = importedData.length;
+                     let processedCount = 0;
+
+                     // Itera sobre os dados importados e adiciona ao DB
+                     importedData.forEach(row => {
+                         const predictionData = {
+                             // Mapeia e converte tipos conforme necessário
+                             // Ignora 'id' e deixa o IndexedDB gerar um novo
+                             ai: row.ai || 'Não Informada',
+                             homeTeam: row.homeTeam || '',
+                             awayTeam: row.awayTeam || '',
+                             matchDatetime: row.matchDatetime || '', // Mantém string
+                             favoriteTeam: row.favoriteTeam || 'Não Informado',
+                             // Converte para número ou null (trata strings vazias)
+                             htScoreHome: row.htScoreHome === '' ? null : parseInt(row.htScoreHome),
+                             htScoreAway: row.htScoreAway === '' ? null : parseInt(row.htScoreAway),
+                             ftResult: row.ftResult || 'Não Informado',
+                             ftScoreHome: row.ftScoreHome === '' ? null : parseInt(row.ftScoreHome),
+                             ftScoreAway: row.ftScoreAway === '' ? null : parseInt(row.ftScoreAway),
+                             totalGoals: row.totalGoals || 'Não Informado',
+                             btts: row.btts || 'Não Informado',
+                             firstScorer: row.firstScorer || 'Não Informado',
+                             firstGoalMinuteSelect: row.firstGoalMinuteSelect || 'Não Informado',
+                             secondHalfGoal75: row.secondHalfGoal75 || 'Não Informado',
+                             // Tenta usar o createdAt do CSV ou um novo timestamp
+                             createdAt: parseInt(row.createdAt) || Date.now(),
+                         };
+
+                         // Remove campos que são undefined/null/vazio após conversão ou que não queremos salvar
+                         Object.keys(predictionData).forEach(key =>
+                              (predictionData[key] === undefined || predictionData[key] === null || predictionData[key] === '') && delete predictionData[key]
+                         );
+
+
+                         const addRequest = objectStore.add(predictionData);
+
+                         addRequest.onsuccess = () => {
+                             addedCount++;
+                              processedCount++;
+                              if (processedCount === totalToImport) reportImportResult(addedCount, errorCount);
+                         };
+                         addRequest.onerror = (event) => {
+                             errorCount++;
+                             console.error("Error importing row:", row, event.target.error);
+                              processedCount++;
+                              if (processedCount === totalToImport) reportImportResult(addedCount, errorCount);
+                         };
+                     });
+
+                     function reportImportResult(added, errors) {
+                          alert(`Importação concluída. ${added} previsões adicionadas. ${errors} erros.`);
+                           loadPredictions(); // Recarrega a lista na home
+                           showScreen(homeScreen); // Volta para a tela home
+                           importFile.value = ''; // Limpa o input do arquivo
+                     }
+
+
+                } catch (error) {
+                    console.error("Error parsing or importing CSV:", error);
+                    alert("Erro ao processar o arquivo CSV.");
+                     importFile.value = ''; // Limpa o input do arquivo
+                }
+            };
+
+            reader.onerror = (event) => {
+                console.error("Error reading file:", event.target.error);
+                alert("Erro ao ler o arquivo.");
+                 importFile.value = ''; // Limpa o input do arquivo
+            };
+
+            reader.readAsText(file); // Lê o arquivo como texto
+        }
+
+
+        // --- Event Listeners ---
+
+        // FAB Click
+        fab.addEventListener('click', () => {
+            // Reseta o currentAI para forçar a escolha na próxima tela
+            currentAI = null;
+            showScreen(chooseAiScreen);
+        });
+
+        // Menu Toggle
+        menuToggle.addEventListener('click', toggleMenu);
+        menuOverlay.addEventListener('click', closeMenu); // Fecha menu clicando no overlay
+
+        // Navegação do Menu
+        menuLinks.forEach(link => {
+             link.addEventListener('click', (event) => {
+                 event.preventDefault(); // Impede o comportamento padrão do link
+                 const targetScreenId = link.dataset.screen;
+                 const targetScreen = document.getElementById(targetScreenId);
+                 if (targetScreen) {
+                      // Reseta o currentAI ao navegar pelo menu (exceto se for para add prediction - que não está no menu)
+                      currentAI = null;
+                     showScreen(targetScreen);
+                 }
+             });
+        });
+
+
+        // Escolha da IA
+        grokBtn.addEventListener('click', () => {
+            console.log('Grok button clicked'); // DEBUG LOG
+            currentAI = grokBtn.dataset.ai;
+            selectedAiDisplay.textContent = currentAI;
+             formTitle.textContent = `Registrar Previsão - ${currentAI}`;
+             resetForm(); // Reseta o formulário ao escolher uma nova IA
+            showScreen(addPredictionScreen);
+        });
+
+         openaiBtn.addEventListener('click', () => {
+             console.log('OpenAI button clicked'); // DEBUG LOG
+            currentAI = openaiBtn.dataset.ai;
+            selectedAiDisplay.textContent = currentAI;
+            formTitle.textContent = `Registrar Previsão - ${currentAI}`;
+             resetForm(); // Reseta o formulário ao escolher uma nova IA
+            showScreen(addPredictionScreen);
+        });
+
+        perplexityBtn.addEventListener('click', () => {
+            console.log('Perplexity AI button clicked'); // DEBUG LOG
+            currentAI = perplexityBtn.dataset.ai;
+            selectedAiDisplay.textContent = currentAI;
+             formTitle.textContent = `Registrar Previsão - ${currentAI}`;
+             resetForm(); // Reseta o formulário ao escolher uma nova IA
+            showScreen(addPredictionScreen);
+        });
+
+         cancelChooseAiBtn.addEventListener('click', () => {
+              console.log('Cancel Choose AI button clicked'); // DEBUG LOG
+             currentAI = null; // Cancela a escolha da IA
+             showScreen(homeScreen); // Volta para a Home
+         });
+
+
+        // Cancelar Adicionar Previsão
+        cancelAddPredictionBtn.addEventListener('click', () => {
+            resetForm(); // Reseta o formulário
+            currentAI = null; // Cancela a IA selecionada
+            showScreen(homeScreen); // Volta para a Home
+        });
+
+
+        // Submissão do Formulário
+        predictionForm.addEventListener('submit', async (event) => {
+            event.preventDefault(); // Previne o recarregamento da página
+
+            if (!currentAI) {
+                 alert("Erro interno: IA não selecionada."); // Isso não deveria acontecer se o fluxo estiver correto
+                 showScreen(homeScreen); // Volta para a home se ocorrer erro
+                 return;
+            }
+
+             // Validação básica dos campos obrigatórios
+             // Nota: Placares e minutos do gol não são obrigatórios, apenas o Resultado 1X2
+            if (!homeTeamInput.value.trim() || !awayTeamInput.value.trim() || !matchDatetimeInput.value || favoriteTeamSelect.value === "" || ftResultSelect.value === "") {
+                alert("Por favor, preencha os campos obrigatórios: Time da Casa, Time Visitante, Data/Hora, Favorito, Resultado Final (1X2).");
+                return;
+            }
+
+
+            const predictionData = {
+                ai: currentAI,
+                homeTeam: homeTeamInput.value.trim(),
+                awayTeam: awayTeamInput.value.trim(),
+                matchDatetime: matchDatetimeInput.value, // Mantém o formato datetime-local para salvar
+                favoriteTeam: favoriteTeamSelect.value, // Pega valor do select
+                // Pega valor numérico, usa null se vazio, 0 se '0'
+                htScoreHome: htScoreHomeInput.value === '' ? null : parseInt(htScoreHomeInput.value),
+                htScoreAway: htScoreAwayInput.value === '' ? null : parseInt(htScoreAwayInput.value),
+                ftResult: ftResultSelect.value,
+                // Pega valor numérico, usa null se vazio, 0 se '0'
+                ftScoreHome: ftScoreHomeInput.value === '' ? null : parseInt(ftScoreHomeInput.value),
+                ftScoreAway: ftScoreAwayInput.value === '' ? null : parseInt(ftScoreAwayInput.value),
+                totalGoals: totalGoalsSelect.value,
+                btts: bttsSelect.value,
+                firstScorer: firstScorerSelect.value,
+                firstGoalMinuteSelect: firstGoalMinuteSelect.value, // Pega valor do select
+                secondHalfGoal75: secondHalfGoal75Select.value,
+            };
+
+             // createdAt é adicionado na função addPrediction
+
+
+            await addPrediction(predictionData);
+        });
+
+        // Evento do botão Exportar CSV
+        exportCsvBtn.addEventListener('click', exportPredictionsCsv);
+
+        // Evento do botão Importar CSV
+        importCsvBtn.addEventListener('click', () => {
+             importPredictionsCsv(importFile.files[0]); // Pega o primeiro arquivo selecionado
+        });
+
+
+        // --- Inicialização ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await openDB(); // Abre/Cria/Atualiza o banco de dados
+                console.log("IndexedDB opened successfully.");
+                loadPredictions(); // Carrega e exibe as previsões existentes na Home
+                 // Mostra a tela Home por padrão
+                 showScreen(homeScreen);
+            } catch (error) {
+                console.error("Failed to initialize IndexedDB:", error);
+                 predictionsList.innerHTML = '<li class="prediction-item">Erro ao inicializar o banco de dados local. As previsões não serão salvas ou carregadas.</li>';
+                 dashboardLoadingMessage.textContent = 'Erro ao carregar dados para o Dashboard.';
+            }
+        });
+
+    </script>
+
+</body>
+</html>
