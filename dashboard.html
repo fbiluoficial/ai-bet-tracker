@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - AI Bet Tracker</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: #1a1a2e;
+            color: #e0e0e0;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        #analysis-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+        @media (min-width: 700px) {
+            #analysis-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (min-width: 1000px) {
+            #analysis-container {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        h2 {
+            color: #00ffff;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .ai-dropdown-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 18px;
+        }
+        .ai-dropdown {
+            background: #23243a;
+            color: #00ffff;
+            border: 1px solid #00ffff;
+            border-radius: 8px;
+            padding: 8px 18px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-right: 10px;
+        }
+        .ai-dropdown:last-child {
+            margin-right: 0;
+        }
+        .ai-dropdown.selected {
+            background: #00ffff;
+            color: #23243a;
+        }
+        .analysis-item {
+            background-color: #2c3a47;
+            border-radius: 8px;
+            margin-bottom: 0;
+            padding: 15px;
+            border: 1px solid #4a4e69;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            position: relative;
+            min-width: 0;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .card-identifier {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: #00ffff;
+            color: #1a1a2e;
+            font-size: 0.85em;
+            font-weight: bold;
+            padding: 2px 10px;
+            border-radius: 12px;
+            z-index: 2;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+            letter-spacing: 1px;
+        }
+        .progress-bar-container {
+            width: 100%;
+            background: linear-gradient(90deg, #23243a 0%, #3a3b5a 100%);
+            border-radius: 10px;
+            overflow: hidden;
+            height: 28px;
+            margin-top: 10px;
+            position: relative;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        }
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            border-radius: 10px 0 0 10px;
+            transition: width 0.5s cubic-bezier(.4,1.4,.6,1);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            font-size: 1em;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 1px 6px rgba(0,0,0,0.25);
+            box-shadow: 0 0 12px 2px rgba(0,255,255,0.15) inset;
+            background: linear-gradient(90deg, #00ffff 0%, #00c3ff 100%);
+            position: relative;
+        }
+        .progress-bar.white {
+            background: linear-gradient(90deg, #e0e0e0 0%, #bdbdbd 100%);
+            color: #23243a;
+        }
+        .progress-bar.yellow {
+            background: linear-gradient(90deg, #ffcc00 0%, #ffe066 100%);
+            color: #23243a;
+        }
+        .progress-bar.green {
+            background: linear-gradient(90deg, #00ff00 0%, #00c853 100%);
+            color: #23243a;
+        }
+        .progress-text {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 10px;
+            color: #fff;
+            font-size: 1em;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-shadow: 0 1px 6px rgba(0,0,0,0.7), 0 0 2px #23243a;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Dashboard de partidas</h2>
+        <div class="ai-dropdown-container">
+            <button class="ai-dropdown selected" data-ai="Todas">Todas as IAs</button>
+            <button class="ai-dropdown" data-ai="Grok">Grok</button>
+            <button class="ai-dropdown" data-ai="OpenAI">OpenAI</button>
+            <button class="ai-dropdown" data-ai="Perplexity AI">Perplexity AI</button>
+        </div>
+        <div id="analysis-container">
+            <div class="analysis-item" id="loading-dashboard-message">Carregando análises...</div>
+        </div>
+    </div>
+    <script>
+        const DB_NAME = 'AIBetTrackerDB';
+        const DB_VERSION = 4;
+        const OBJECT_STORE_NAME = 'predictions';
+        let db;
+        const analysisContainer = document.getElementById('analysis-container');
+        const dashboardLoadingMessage = document.getElementById('loading-dashboard-message');
+
+        // --- Filtro por IA ---
+        let allPredictionsCache = [];
+        let selectedAI = "Todas";
+
+        function setAIDropdownHandlers() {
+            const aiButtons = document.querySelectorAll('.ai-dropdown');
+            aiButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    aiButtons.forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    selectedAI = btn.getAttribute('data-ai');
+                    filterAndUpdateDashboard();
+                });
+            });
+        }
+
+        async function filterAndUpdateDashboard() {
+            let filtered = allPredictionsCache;
+            if (selectedAI !== "Todas") {
+                filtered = allPredictionsCache.filter(p => (p.ai || "Não Informada") === selectedAI);
+            }
+            updateDashboard(filtered);
+        }
+
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onupgradeneeded = (event) => {
+                    db = event.target.result;
+                    if (!db.objectStoreNames.contains(OBJECT_STORE_NAME)) {
+                        db.createObjectStore(OBJECT_STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                    }
+                };
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    resolve(db);
+                };
+                request.onerror = (event) => {
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        async function getAllPredictions() {
+            if (!db) return [];
+            const transaction = db.transaction(OBJECT_STORE_NAME, 'readonly');
+            const objectStore = transaction.objectStore(OBJECT_STORE_NAME);
+            const request = objectStore.getAll();
+            return new Promise((resolve, reject) => {
+                request.onsuccess = (event) => resolve(event.target.result);
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        async function updateDashboard(predictionsParam) {
+            analysisContainer.innerHTML = '';
+            analysisContainer.appendChild(dashboardLoadingMessage);
+            dashboardLoadingMessage.classList.remove('hidden');
+            try {
+                let predictions;
+                if (Array.isArray(predictionsParam)) {
+                    predictions = predictionsParam;
+                } else {
+                    predictions = await getAllPredictions();
+                    allPredictionsCache = predictions;
+                }
+                const totalPredictions = predictions.length;
+                if (totalPredictions === 0) {
+                    analysisContainer.innerHTML = '<div class="analysis-item"><p style="text-align: center; color: #b8b8d1;">Nenhuma previsão registrada para analisar.</p></div>';
+                    return;
+                }
+                const analysisCounts = {
+                    aiCount: {},
+                    ftResultCount: {},
+                    totalGoalsExactCount: {},
+                    bttsCount: {},
+                    firstScorerCount: {},
+                    firstGoalMinuteCount: {},
+                    secondHalfGoal75Count: {},
+                    favoriteTeamCount: {},
+                    ftScoreHomeDistribution: { '0': 0, '1': 0, '2+': 0 },
+                    ftScoreAwayDistribution: { '0': 0, '1': 0, '2+': 0 },
+                    htScoreHomeDistribution: { '0': 0, '1': 0, '2+': 0 },
+                    htScoreAwayDistribution: { '0': 0, '1': 0, '2+': 0 },
+                    over2_5Exact: 0,
+                    under2_5Exact: 0,
+                    notInformedTotalGoalsExact: 0,
+                    totalGoalsSelectCount: {},
+                    totalGoalsOver0_5FT: 0,
+                    totalGoalsOver1_5FT: 0,
+                };
+                ['Grok', 'OpenAI', 'Perplexity AI'].forEach(ai => analysisCounts.aiCount[ai] = 0);
+                ['Casa', 'Empate', 'Fora'].forEach(res => analysisCounts.ftResultCount[res] = 0);
+                ['Sim', 'Não', 'Nao Informado'].forEach(btts => analysisCounts.bttsCount[btts] = 0);
+                ['Casa', 'Visitante', 'Sem Gols', 'Nao Informado'].forEach(scorer => analysisCounts.firstScorerCount[scorer] = 0);
+                ['1-14', '15-29', '30-45', '46-60', '61-75', '76-90+', 'Sem Gols', 'Nao Informado'].forEach(minute => analysisCounts.firstGoalMinuteCount[minute] = 0);
+                ['Antes dos 75\'', 'Após os 75\'', 'Nenhum Gol no Segundo Tempo', 'Nao Informado'].forEach(goal75 => analysisCounts.secondHalfGoal75Count[goal75] = 0);
+                ['Casa', 'Visitante', 'Nenhum', 'Nao Informado'].forEach(fav => analysisCounts.favoriteTeamCount[fav] = 0);
+                ['Acima de 0.5','Abaixo de 0.5','Acima de 1.5','Abaixo de 1.5','Acima de 2.5','Abaixo de 2.5','Acima de 3.5','Abaixo de 3.5','Nao Informado'].forEach(goals => analysisCounts.totalGoalsSelectCount[goals] = 0);
+
+                predictions.forEach(p => {
+                    analysisCounts.aiCount[p.ai || 'Não Informada'] = (analysisCounts.aiCount[p.ai || 'Não Informada'] || 0) + 1;
+                    analysisCounts.ftResultCount[p.ftResult || 'Nao Informado'] = (analysisCounts.ftResultCount[p.ftResult || 'Nao Informado'] || 0) + 1;
+                    analysisCounts.bttsCount[p.btts || 'Nao Informado'] = (analysisCounts.bttsCount[p.btts || 'Nao Informado'] || 0) + 1;
+                    analysisCounts.firstScorerCount[p.firstScorer || 'Nao Informado'] = (analysisCounts.firstScorerCount[p.firstScorer || 'Nao Informado'] || 0) + 1;
+                    analysisCounts.firstGoalMinuteCount[p.firstGoalMinuteSelect || 'Nao Informado'] = (analysisCounts.firstGoalMinuteCount[p.firstGoalMinuteSelect || 'Nao Informado'] || 0) + 1;
+                    analysisCounts.secondHalfGoal75Count[p.secondHalfGoal75 || 'Nao Informado'] = (analysisCounts.secondHalfGoal75Count[p.secondHalfGoal75 || 'Nao Informado'] || 0) + 1;
+                    analysisCounts.favoriteTeamCount[p.favoriteTeam || 'Nao Informado'] = (analysisCounts.favoriteTeamCount[p.favoriteTeam || 'Nao Informado'] || 0) + 1;
+                    if (p.totalGoalsExact !== null && p.totalGoalsExact !== undefined && !isNaN(p.totalGoalsExact)) {
+                        const total = p.totalGoalsExact;
+                        analysisCounts.totalGoalsExactCount[total] = (analysisCounts.totalGoalsExactCount[total] || 0) + 1;
+                        if (total > 2.5) analysisCounts.over2_5Exact++;
+                        else analysisCounts.under2_5Exact++;
+                    } else if (typeof p.totalGoals === 'string' && p.totalGoals.trim() !== '') {
+                        analysisCounts.totalGoalsSelectCount[p.totalGoals] = (analysisCounts.totalGoalsSelectCount[p.totalGoals] || 0) + 1;
+                    } else {
+                        analysisCounts.notInformedTotalGoalsExact++;
+                    }
+                    // Novo cálculo para gols FT
+                    if (
+                        p.ftScoreHome !== null && p.ftScoreHome !== undefined && !isNaN(p.ftScoreHome) &&
+                        p.ftScoreAway !== null && p.ftScoreAway !== undefined && !isNaN(p.ftScoreAway)
+                    ) {
+                        const totalGoalsFT = Number(p.ftScoreHome) + Number(p.ftScoreAway);
+                        if (totalGoalsFT >= 1) analysisCounts.totalGoalsOver0_5FT++;
+                        if (totalGoalsFT >= 2) analysisCounts.totalGoalsOver1_5FT++;
+                    }
+                    if (p.ftScoreHome !== null && p.ftScoreHome !== undefined && !isNaN(p.ftScoreHome)) {
+                        if (p.ftScoreHome === 0) analysisCounts.ftScoreHomeDistribution['0']++;
+                        else if (p.ftScoreHome === 1) analysisCounts.ftScoreHomeDistribution['1']++;
+                        else analysisCounts.ftScoreHomeDistribution['2+']++;
+                    }
+                    if (p.ftScoreAway !== null && p.ftScoreAway !== undefined && !isNaN(p.ftScoreAway)) {
+                        if (p.ftScoreAway === 0) analysisCounts.ftScoreAwayDistribution['0']++;
+                        else if (p.ftScoreAway === 1) analysisCounts.ftScoreAwayDistribution['1']++;
+                        else analysisCounts.ftScoreAwayDistribution['2+']++;
+                    }
+                    if (p.htScoreHome !== null && p.htScoreHome !== undefined && !isNaN(p.htScoreHome)) {
+                        if (p.htScoreHome === 0) analysisCounts.htScoreHomeDistribution['0']++;
+                        else if (p.htScoreHome === 1) analysisCounts.htScoreHomeDistribution['1']++;
+                        else analysisCounts.htScoreHomeDistribution['2+']++;
+                    }
+                    if (p.htScoreAway !== null && p.htScoreAway !== undefined && !isNaN(p.htScoreAway)) {
+                        if (p.htScoreAway === 0) analysisCounts.htScoreAwayDistribution['0']++;
+                        else if (p.htScoreAway === 1) analysisCounts.htScoreAwayDistribution['1']++;
+                        else analysisCounts.htScoreAwayDistribution['2+']++;
+                    }
+                });
+
+                analysisContainer.innerHTML = '';
+                function createAnalysisItem(title, value, total, valueLabel, cardNumber, percentage) {
+                    let colorClass = 'white';
+                    if (percentage > 30) colorClass = 'yellow';
+                    if (percentage > 89) colorClass = 'green';
+                    const itemDiv = document.createElement('div');
+                    itemDiv.classList.add('analysis-item');
+                    itemDiv.style.position = 'relative';
+                    let displayTitle;
+                    if (title === 'Por BTTS Previsto') {
+                        displayTitle = `BTTS : ${valueLabel || value} (${value} de ${total})`;
+                    } else {
+                        displayTitle = `${title}: ${valueLabel || value} (${value} de ${total})`;
+                    }
+                    let additionalContent = '';
+                    if (title === 'Por BTTS Previsto' && valueLabel === 'Sim') {
+                        additionalContent = '<p style="margin-top: 5px; font-size: 0.9em; color: #b8b8d1;">BTTS : Sim</p>';
+                    }
+                    itemDiv.innerHTML = `
+                        <span class="card-identifier">card-${cardNumber}</span>
+                        <h3>${displayTitle}</h3>
+                        ${additionalContent}
+                        <div class="progress-bar-container">
+                            <div class="progress-bar ${colorClass}" style="width: ${percentage.toFixed(1)}%;"></div>
+                            <div class="progress-text">${percentage.toFixed(1)}%</div>
+                        </div>
+                    `;
+                    return itemDiv;
+                }
+
+                // Coletar todos os cards em um array para ordenar por porcentagem
+                let cardCounter = 1;
+                const cardsData = [];
+
+                // Total de partidas Registradas (sempre no topo)
+                cardsData.push({
+                    title: 'Total de partidas Registradas',
+                    value: totalPredictions,
+                    total: totalPredictions,
+                    valueLabel: totalPredictions,
+                    cardNumber: cardCounter++,
+                    percentage: 100
+                });
+
+                // Novo card: Total +0.5 Gol FT
+                if (analysisCounts.totalGoalsOver0_5FT > 0) {
+                    cardsData.push({
+                        title: 'Total +0.5 Gol FT',
+                        value: analysisCounts.totalGoalsOver0_5FT,
+                        total: totalPredictions,
+                        valueLabel: analysisCounts.totalGoalsOver0_5FT,
+                        cardNumber: cardCounter++,
+                        percentage: totalPredictions > 0 ? (analysisCounts.totalGoalsOver0_5FT / totalPredictions) * 100 : 0
+                    });
+                }
+                // Novo card: Total +1.5 Gol FT
+                if (analysisCounts.totalGoalsOver1_5FT > 0) {
+                    cardsData.push({
+                        title: 'Total +1.5 Gol FT',
+                        value: analysisCounts.totalGoalsOver1_5FT,
+                        total: totalPredictions,
+                        valueLabel: analysisCounts.totalGoalsOver1_5FT,
+                        cardNumber: cardCounter++,
+                        percentage: totalPredictions > 0 ? (analysisCounts.totalGoalsOver1_5FT / totalPredictions) * 100 : 0
+                    });
+                }
+
+                // Card-4: Por BTTS Previsto
+                // Card dedicado para BTTS : Sim
+                const bttsSimCount = analysisCounts.bttsCount['Sim'] || 0;
+                if (bttsSimCount > 0) {
+                    cardsData.push({
+                        title: 'BTTS : Sim',
+                        value: bttsSimCount,
+                        total: totalPredictions,
+                        valueLabel: 'Sim',
+                        cardNumber: cardCounter++,
+                        percentage: totalPredictions > 0 ? (bttsSimCount / totalPredictions) * 100 : 0
+                    });
+                }
+
+                // Outros cards de BTTS (excluindo 'Sim')
+                Object.keys(analysisCounts.bttsCount)
+                    .filter(key => key !== 'Sim')
+                    .sort()
+                    .forEach(key => {
+                        const count = analysisCounts.bttsCount[key];
+                        if (count > 0) {
+                            cardsData.push({
+                                title: 'Por BTTS Previsto',
+                                value: count,
+                                total: totalPredictions,
+                                valueLabel: key,
+                                cardNumber: cardCounter++,
+                                percentage: totalPredictions > 0 ? (count / totalPredictions) * 100 : 0
+                            });
+                        }
+                    });
+
+                // Card-7: Por Minuto 1º Gol Previsto
+                Object.keys(analysisCounts.firstGoalMinuteCount).sort().forEach(key => {
+                    const count = analysisCounts.firstGoalMinuteCount[key];
+                    if (count > 0) {
+                        cardsData.push({
+                            title: 'Por Minuto 1º Gol Previsto',
+                            value: count,
+                            total: totalPredictions,
+                            valueLabel: key,
+                            cardNumber: cardCounter++,
+                            percentage: totalPredictions > 0 ? (count / totalPredictions) * 100 : 0
+                        });
+                    }
+                });
+
+                // Card-8: Por Time Favorito Previsto
+                Object.keys(analysisCounts.favoriteTeamCount).sort().forEach(key => {
+                    const count = analysisCounts.favoriteTeamCount[key];
+                    if (count > 0) {
+                        cardsData.push({
+                            title: 'Por Time Favorito Previsto',
+                            value: count,
+                            total: totalPredictions,
+                            valueLabel: key,
+                            cardNumber: cardCounter++,
+                            percentage: totalPredictions > 0 ? (count / totalPredictions) * 100 : 0
+                        });
+                    }
+                });
+
+                // Card-9: Freq. Placar HT Casa
+                Object.keys(analysisCounts.htScoreHomeDistribution).sort().forEach(key => {
+                    const count = analysisCounts.htScoreHomeDistribution[key];
+                    if (count > 0) {
+                        cardsData.push({
+                            title: 'Freq. Placar HT Casa',
+                            value: count,
+                            total: totalPredictions,
+                            valueLabel: key,
+                            cardNumber: cardCounter++,
+                            percentage: totalPredictions > 0 ? (count / totalPredictions) * 100 : 0
+                        });
+                    }
+                });
+
+                // Card-10: Freq. Placar HT Fora
+                Object.keys(analysisCounts.htScoreAwayDistribution).sort().forEach(key => {
+                    const count = analysisCounts.htScoreAwayDistribution[key];
+                    if (count > 0) {
+                        cardsData.push({
+                            title: 'Freq. Placar HT Fora',
+                            value: count,
+                            total: totalPredictions,
+                            valueLabel: key,
+                            cardNumber: cardCounter++,
+                            percentage: totalPredictions > 0 ? (count / totalPredictions) * 100 : 0
+                        });
+                    }
+                });
+
+                // Card-11: Freq. Placar FT Casa
+                Object.keys(analysisCounts.ftScoreHomeDistribution).sort().forEach(key => {
+                    const count = analysisCounts.ftScoreHomeDistribution[key];
+                    if (count > 0) {
+                        cardsData.push({
+                            title: 'Freq. Placar FT Casa',
+                            value: count,
+                            total: totalPredictions,
+                            valueLabel: key,
+                            cardNumber: cardCounter++,
+                            percentage: totalPredictions > 0 ? (count / totalPredictions) * 100 : 0
+                        });
+                    }
+                });
+
+                // Card-12: Freq. Placar FT Fora
+                Object.keys(analysisCounts.ftScoreAwayDistribution).sort().forEach(key => {
+                    const count = analysisCounts.ftScoreAwayDistribution[key];
+                    if (count > 0) {
+                        cardsData.push({
+                            title: 'Freq. Placar FT Fora',
+                            value: count,
+                            total: totalPredictions,
+                            valueLabel: key,
+                            cardNumber: cardCounter++,
+                            percentage: totalPredictions > 0 ? (count / totalPredictions) * 100 : 0
+                        });
+                    }
+                });
+
+                // Ordenar os cards (exceto o primeiro) por porcentagem decrescente
+                const [firstCard, ...otherCards] = cardsData;
+                otherCards.sort((a, b) => b.percentage - a.percentage);
+
+                // Renderizar cards ordenados
+                analysisContainer.appendChild(
+                    createAnalysisItem(
+                        firstCard.title,
+                        firstCard.value,
+                        firstCard.total,
+                        firstCard.valueLabel,
+                        1,
+                        firstCard.percentage
+                    )
+                );
+                otherCards.forEach((card, idx) => {
+                    analysisContainer.appendChild(
+                        createAnalysisItem(
+                            card.title,
+                            card.value,
+                            card.total,
+                            card.valueLabel,
+                            idx + 2,
+                            card.percentage
+                        )
+                    );
+                });
+            } catch (error) {
+                analysisContainer.innerHTML = '<div class="analysis-item"><p style="text-align: center; color: #ffcc00;">Erro ao carregar dados para o Dashboard.</p></div>';
+            } finally {
+                dashboardLoadingMessage.classList.add('hidden');
+            }
+        }
+
+        openDB().then(() => {
+            setAIDropdownHandlers();
+            getAllPredictions().then(predictions => {
+                allPredictionsCache = predictions;
+                filterAndUpdateDashboard();
+            });
+        });
+        </script>
+    </body>
+    </html>
