@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- SheetJS XLSX library para exportação Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <title>AI Bet Tracker</title>
     <style>
         /* Reset básico */
@@ -10,6 +12,22 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+        }
+
+        /* Identificador do card no dashboard */
+        .card-identifier {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: #00ffff;
+            color: #1a1a2e;
+            font-size: 0.85em;
+            font-weight: bold;
+            padding: 2px 10px;
+            border-radius: 12px;
+            z-index: 2;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+            letter-spacing: 1px;
         }
 
         body {
@@ -518,7 +536,7 @@
     <div class="side-menu" id="side-menu">
         <ul>
             <li><a href="#" data-screen="home-screen">Home</a></li>
-            <li><a href="#" data-screen="dashboard-screen">Dashboard</a></li>
+            <li><a href="dashboard.html" target="_self">Dashboard</a></li>
             <li><a href="#" data-screen="export-import-screen">Exportar / Importar</a></li>
             <!-- Adicionar outros itens de menu aqui se necessário -->
         </ul>
@@ -531,21 +549,21 @@
     <div class="container">
         <!-- Home Screen -->
         <div id="home-screen" class="screen active">
-            <h2>Previsões Registradas</h2>
+            <h2>Histórico de Partidas Registradas</h2>
             <ul id="predictions-list">
                 <!-- Previsões serão carregadas aqui pelo JavaScript -->
-                 <li class="prediction-item" id="loading-message">Carregando previsões...</li>
-                 <li class="prediction-item" id="no-predictions-message" class="hidden">Nenhuma previsão registrada ainda. Clique no '+' para adicionar.</li>
+                 <li class="prediction-item" id="loading-message">Carregando Histórico...</li>
+                 <li class="prediction-item" id="no-predictions-message" class="hidden">Nenhuma partida registrada ainda. Clique no '+' para adicionar.</li>
             </ul>
         </div>
 
         <!-- Choose AI Screen -->
         <div id="choose-ai-screen" class="screen hidden">
              <h2>Escolha a IA</h2>
-             <p>Para qual inteligência artificial você deseja registrar uma previsão?</p>
+             <p>Para qual inteligência artificial você deseja registrar uma partida?</p>
              <button type="button" class="ai-choice-button" data-ai="Grok" id="grok-btn">Grok</button>
-             <button type="button" class="ai-choice-button" data-ai="OpenAI" id="openai-btn">OpenAI (ChatGPT/GPT-4)</button>
-             <button type="button" class="ai-choice-button" data-ai="Perplexity AI" id="perplexity-btn">Perplexity AI</button>
+             <button type="button" class="ai-choice-button" data-ai="OpenAI" id="openai-btn">OpenAI</button>
+             <button type="button" class="ai-choice-button" data-ai="Perplexity AI" id="perplexity-btn">Perplexity</button>
               <div class="button-group">
                  <button type="button" class="cancel-button" id="cancel-choose-ai">Cancelar</button>
               </div>
@@ -553,7 +571,7 @@
 
         <!-- Add Prediction Form Screen -->
         <div id="add-prediction-screen" class="screen hidden">
-            <h2 id="form-title">Registrar Previsão</h2>
+            <h2 id="form-title">Registrar Tracker</h2>
             <form id="prediction-form">
                  <!-- Campo escondido para guardar o ID do item em edição -->
                 <input type="hidden" id="editing-id">
@@ -564,23 +582,17 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="away-team">Time Visitante:</label>
+                    <label for="away-team">Visitante:</label>
                     <input type="text" id="away-team" required>
                 </div>
 
-                <div class="form-group">
-                    <label for="match-datetime">Data e Hora da Partida:</label>
-                    <input type="datetime-local" id="match-datetime" required>
-                </div>
-
                  <div class="form-group">
-                     <label for="favorite-team-select">Time favorito (IA):</label>
+                     <label for="favorite-team-select">Time favorito:</label>
                      <select id="favorite-team-select" required>
                           <option value="">-- Selecione --</option>
-                          <option value="Time da Casa">Time da Casa</option>
-                          <option value="Time Visitante">Time Visitante</option>
+                          <option value="Casa">Casa</option>
+                          <option value="Visitante">Visitante</option>
                           <option value="Nenhum">Nenhum</option>
-                          <option value="Nao Informado">Não Informado</option>
                      </select>
                  </div>
 
@@ -602,18 +614,7 @@
                      </div>
                 </div>
 
-                 <div class="form-group">
-                    <label for="ft-result">Resultado Final (1X2):</label>
-                    <select id="ft-result" required>
-                        <option value="">-- Selecione --</option>
-                        <option value="Vitória Casa">Vitória do Time da Casa (1)</option>
-                        <option value="Empate">Empate (X)</option>
-                        <option value="Vitória Visitante">Vitória do Time Visitante (2)</option>
-                         <option value="Nao Informado">Não Informado</option>
-                    </select>
-                </div>
-
-                 <div class="form-group">
+                <div class="form-group">
                     <label>Placar Final (FT):</label>
                      <div class="score-inputs">
                          <label for="ft-score-home">Casa:</label>
@@ -622,74 +623,89 @@
                          <label for="ft-score-away">Fora:</label>
                          <input type="number" id="ft-score-away" min="0">
                      </div>
-                     <small style="color: #b8b8d1;">Placar previsto pela IA.</small>
                 </div>
-
 
                 <div class="form-group">
                     <label for="total-goals-exact">Total de Gols Exato:</label> <!-- Label alterado -->
-                     <input type="number" id="total-goals-exact" min="0"> <!-- Input alterado -->
-                     <small style="color: #b8b8d1;">Número exato de gols previstos.</small>
+                     <input type="number" id="total-goals-exact" min="0" readonly> <!-- Input alterado, agora readonly -->
+                </div>
+
+                 <div class="form-group">
+                    <label for="ht-result">Resultado Final (HT):</label>
+                    <select id="ht-result" required disabled>
+                        <option value="">--</option>
+                        <option value="Casa">Casa</option>
+                        <option value="Empate">Empate</option>
+                        <option value="Visitante">Visitante</option>
+                    </select>
+                </div>
+
+                 <div class="form-group">
+                    <label for="ft-result">Resultado Final (FT):</label>
+                    <select id="ft-result" required disabled>
+                        <option value="">--</option>
+                        <option value="Casa">Casa</option>
+                        <option value="Empate">Empate</option>
+                        <option value="Visitante">Visitante</option>
+                    </select>
                 </div>
 
                 <div class="form-group">
                     <label for="btts">Ambas as Equipas Marcam (BTTS):</label>
-                    <select id="btts">
-                        <option value="">-- Selecione --</option>
+                    <select id="btts" disabled>
+                        <option value="">--</option>
                         <option value="Sim">Sim</option>
                         <option value="Não">Não</option>
-                         <option value="Nao Informado">Não Informado</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label for="first-scorer-select">Primeira Equipa a Marcar:</label>
+                    <label for="first-scorer-select">Primeiro a Marcar (HT):</label>
                      <select id="first-scorer-select">
                         <option value="">-- Selecione --</option>
-                        <option value="Time da Casa">Time da Casa</option>
-                        <option value="Time Visitante">Time Visitante</option>
+                        <option value="Casa">Casa</option>
+                        <option value="Visitante">Visitante</option>
                         <option value="Sem Gols">Sem Gols</option>
-                         <option value="Nao Informado">Não Informado</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label for="first-goal-minute-select">Minuto do primeiro gol:</label>
+                    <label for="first-goal-minute-select">Minuto do 1º gol (HT):</label>
                     <select id="first-goal-minute-select">
                         <option value="">-- Selecione --</option>
                         <option value="1-14">1-14'</option>
                         <option value="15-29">15-29'</option>
                         <option value="30-45">30-45'</option>
-                        <option value="46-60">46-60'</option>
-                        <option value="61-75">61-75'</option>
-                        <option value="76-90+">76-90+'</option>
                         <option value="Sem Gols">Sem Gols</option>
-                         <option value="Nao Informado">Não Informado</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label for="second-half-goal-75">Gol no segundo tempo (antes/após 75'):</label>
+                    <label for="second-half-goal-75">Gol no FT (antes/após 75'):</label>
                     <select id="second-half-goal-75">
                         <option value="">-- Selecione --</option>
                         <option value="Antes dos 75'">Antes dos 75'</option>
                         <option value="Após os 75'">Após os 75'</option>
-                        <option value="Nenhum Gol no Segundo Tempo">Nenhum Gol no Segundo Tempo</option>
-                         <option value="Nao Informado">Não Informado</option>
+                        <option value="Nenhum Gol no Segundo Tempo">Sem gols no FT</option>
                     </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="match-datetime">Data e Hora da Partida:</label>
+                    <input type="datetime-local" id="match-datetime" required>
                 </div>
 
                 <div class="button-group">
                     <button type="button" class="cancel-button" id="cancel-add-prediction">Cancelar</button>
-                    <button type="submit" id="submit-button">Registrar Previsão</button> <!-- Adicionado ID -->
+                    <button type="submit" id="submit-button">Registrar partida</button> <!-- Adicionado ID -->
                 </div>
             </form>
         </div>
 
         <!-- Dashboard Screen -->
          <div id="dashboard-screen" class="screen hidden">
-             <h2>Dashboard de Previsões</h2>
-              <p style="color: #ffcc00; font-size: 0.9em; margin-bottom: 20px;">* Análises baseadas nos *tipos de previsões registradas*, não na precisão real dos resultados dos jogos.</p>
+             <h2>Dashboard de partidas</h2>
+              <p style="color: #ffcc00; font-size: 0.9em; margin-bottom: 20px;">* Análises baseadas nas partidas registradas dos jogos.</p>
              <div id="analysis-container">
                  <!-- Itens de análise serão carregados aqui pelo JavaScript -->
                   <div class="analysis-item" id="loading-dashboard-message">Carregando análises...</div>
@@ -701,16 +717,16 @@
              <h2>Exportar / Importar Dados</h2>
 
              <h3>Exportar Dados</h3>
-             <p>Exporte todas as previsões registradas para um arquivo CSV.</p>
+             <p>Exporte todas as partidas registradas para um arquivo XLSX.</p>
              <div class="button-group">
-                 <button type="button" id="export-csv-btn">Exportar para CSV</button>
+                 <button type="button" id="export-csv-btn">Exportar para Excel</button>
              </div>
 
              <div id="import-section">
                   <h3>Importar Dados</h3>
-                  <p>Selecione um arquivo CSV para importar previsões. O arquivo deve seguir o formato de exportação.</p>
-                 <label for="import-file">Escolher arquivo CSV:</label>
-                 <input type="file" id="import-file" accept=".csv">
+                  <p>Selecione um arquivo XLSX para importar previsões. O arquivo deve seguir o formato de exportação.</p>
+                 <label for="import-file">Escolher arquivo XLSX:</label>
+                 <input type="file" id="import-file" accept=".xlsx">
                  <div class="button-group">
                       <button type="button" id="import-csv-btn">Importar</button>
                  </div>
@@ -726,8 +742,7 @@
 
     <script>
         const DB_NAME = 'AIBetTrackerDB';
-        // Incrementa a versão do DB porque a estrutura de dados está mudando
-        // (campo totalGoals removido, totalGoalsExact adicionado)
+        // Mantém a versão, pois a estrutura de dados já foi atualizada
         const DB_VERSION = 4;
         const OBJECT_STORE_NAME = 'predictions';
 
@@ -783,6 +798,47 @@
         const firstGoalMinuteSelect = document.getElementById('first-goal-minute-select');
         const secondHalfGoal75Select = document.getElementById('second-half-goal-75');
         const cancelAddPredictionBtn = document.getElementById('cancel-add-prediction');
+        const htResultSelect = document.getElementById('ht-result');
+
+        // Função para atualizar Resultado Final (FT) automaticamente
+        function updateFTResult() {
+            const home = parseInt(ftScoreHomeInput.value, 10);
+            const away = parseInt(ftScoreAwayInput.value, 10);
+            if (isNaN(home) || isNaN(away)) {
+                ftResultSelect.value = "";
+                return;
+            }
+            if (home > away) {
+                ftResultSelect.value = "Casa";
+            } else if (home < away) {
+                ftResultSelect.value = "Visitante";
+            } else {
+                ftResultSelect.value = "Empate";
+            }
+        }
+
+        // Função para atualizar Resultado Intervalo (HT) automaticamente
+        function updateHTResult() {
+            const home = parseInt(htScoreHomeInput.value, 10);
+            const away = parseInt(htScoreAwayInput.value, 10);
+            if (isNaN(home) || isNaN(away)) {
+                htResultSelect.value = "";
+                return;
+            }
+            if (home > away) {
+                htResultSelect.value = "Casa";
+            } else if (home < away) {
+                htResultSelect.value = "Visitante";
+            } else {
+                htResultSelect.value = "Empate";
+            }
+        }
+
+        // Listeners para atualizar automaticamente os resultados
+        ftScoreHomeInput.addEventListener('input', updateFTResult);
+        ftScoreAwayInput.addEventListener('input', updateFTResult);
+        htScoreHomeInput.addEventListener('input', updateHTResult);
+        htScoreAwayInput.addEventListener('input', updateHTResult);
 
         // Dashboard elements
         const analysisContainer = document.getElementById('analysis-container');
@@ -820,9 +876,9 @@
             }
 
              // Se for a tela de adicionar (e não veio de uma edição), reseta o formulário
+             // Verifica se o editingIdInput está vazio para saber se é um novo registro
              if (screenToShow === addPredictionScreen && editingIdInput.value === '') {
-                 // Só reseta se não estiver editando (editingIdInput vazio)
-                 resetForm();
+                 resetForm(); // Reseta apenas se for um NOVO registro
              }
         }
 
@@ -842,10 +898,9 @@
         function resetForm() {
             predictionForm.reset();
             editingIdInput.value = ''; // Limpa o ID de edição
-            formTitle.textContent = 'Registrar Previsão'; // Reseta título do formulário
-            submitButton.textContent = 'Registrar Previsão'; // Reseta texto do botão
+            formTitle.textContent = 'Registrar Nova Partida'; // Reseta título do formulário
+            submitButton.textContent = 'Registrar Nova Partida'; // Reseta texto do botão
             selectedAiDisplay.textContent = '';
-            currentAI = null; // Limpa a IA selecionada
 
              // Reseta selects para a primeira opção (vazia se houver)
             if(favoriteTeamSelect.options.length > 0) favoriteTeamSelect.selectedIndex = 0;
@@ -868,7 +923,7 @@
              editingIdInput.value = prediction.id; // Salva o ID no campo escondido
              formTitle.textContent = `Editar Previsão - ${prediction.ai}`; // Muda o título
              submitButton.textContent = 'Atualizar Previsão'; // Muda texto do botão
-             currentAI = prediction.ai; // Define a IA para fins de exibição no form
+             currentAI = prediction.ai; // Define a IA para fins de exibição no form (mantém qual IA foi usada)
 
              selectedAiDisplay.textContent = prediction.ai || 'Não Informada';
              homeTeamInput.value = prediction.homeTeam || '';
@@ -876,6 +931,7 @@
              matchDatetimeInput.value = prediction.matchDatetime || ''; // Mantém o formato datetime-local
 
              // Define valores para selects (verifica se a option existe antes)
+             // Usa || '' para definir para a opção vazia se o valor salvo for null/undefined
              favoriteTeamSelect.value = prediction.favoriteTeam || '';
              ftResultSelect.value = prediction.ftResult || '';
              bttsSelect.value = prediction.btts || '';
@@ -883,12 +939,15 @@
              firstGoalMinuteSelect.value = prediction.firstGoalMinuteSelect || ''; // Novo select de minuto
              secondHalfGoal75Select.value = prediction.secondHalfGoal75 || '';
 
-             // Define valores para campos numéricos (lida com null/undefined)
-             htScoreHomeInput.value = prediction.htScoreHome !== null && prediction.htScoreHome !== undefined ? prediction.htScoreHome : '';
-             htScoreAwayInput.value = prediction.htScoreAway !== null && prediction.htScoreAway !== undefined ? prediction.htScoreAway : '';
-             ftScoreHomeInput.value = prediction.ftScoreHome !== null && prediction.ftScoreHome !== undefined ? prediction.ftScoreHome : '';
-             ftScoreAwayInput.value = prediction.ftScoreAway !== null && prediction.ftScoreAway !== undefined ? prediction.ftScoreAway : '';
-             totalGoalsExactInput.value = prediction.totalGoalsExact !== null && prediction.totalGoalsExact !== undefined ? prediction.totalGoalsExact : ''; // Novo campo
+             // Define valores para campos numéricos (lida com null/undefined/vazio)
+             // Usa !== null && !== undefined para verificar se o valor existe e não é null antes de atribuir
+             htScoreHomeInput.value = (prediction.htScoreHome !== null && prediction.htScoreHome !== undefined) ? prediction.htScoreHome : '';
+             htScoreAwayInput.value = (prediction.htScoreAway !== null && prediction.htScoreAway !== undefined) ? prediction.htScoreAway : '';
+             ftScoreHomeInput.value = (prediction.ftScoreHome !== null && prediction.ftScoreHome !== undefined) ? prediction.ftScoreHome : '';
+             ftScoreAwayInput.value = (prediction.ftScoreAway !== null && prediction.ftScoreAway !== undefined) ? prediction.ftScoreAway : '';
+             // totalGoalsExactInput.value = (prediction.totalGoalsExact !== null && prediction.totalGoalsExact !== undefined) ? prediction.totalGoalsExact : ''; // Use '' para campo vazio numérico
+             totalGoalsExactInput.value = (prediction.totalGoalsExact !== null && prediction.totalGoalsExact !== undefined) ? prediction.totalGoalsExact : '';
+
          }
 
 
@@ -909,57 +968,10 @@
                          console.log(`IndexedDB: Object Store '${OBJECT_STORE_NAME}' created.`);
                     } else {
                         console.log(`IndexedDB: Object Store '${OBJECT_STORE_NAME}' already exists.`);
-                        // ** Lógica de Migração de Dados (Exemplo básico) **
-                        // Isso é onde você lidaria com a mudança de totalGoals (select) para totalGoalsExact (number)
-                        if (oldVersion < 4) {
-                            console.log("Migrating data from older version to v4...");
-                            const transaction = event.target.transaction;
-                            const oldStore = transaction.objectStore(OBJECT_STORE_NAME);
-                             // Não podemos alterar a store 'in-place' facilmente para mudar o tipo de campo.
-                             // A migração mais segura seria criar uma NOVA store, copiar/transformar dados,
-                             // excluir a antiga e renomear a nova.
-                             // Para este arquivo único, faremos um tratamento *durante a leitura* e
-                             // salvaremos *novos/editados* dados no formato v4.
-                             // Dados antigos simplesmente não terão o campo 'totalGoalsExact'
-                             // ou terão 'totalGoals' com o valor string do select.
-                             // O código de load/dashboard já lida com isso verificando a existência do campo.
-                             // Uma migração real envolveria algo como:
-                             /*
-                             try {
-                                const tempStore = db.createObjectStore('temp_predictions', { keyPath: 'id', autoIncrement: true });
-                                oldStore.openCursor().onsuccess = function(event) {
-                                    const cursor = event.target.result;
-                                    if (cursor) {
-                                        const oldData = cursor.value;
-                                        const newData = { ...oldData }; // Copia dados antigos
-                                        // Exemplo de transformação totalGoals string para number (se possível)
-                                        if (typeof newData.totalGoals === 'string' && !isNaN(parseInt(newData.totalGoals))) {
-                                            newData.totalGoalsExact = parseInt(newData.totalGoals);
-                                        } else {
-                                             newData.totalGoalsExact = null; // Ou 0, ou 'Não Informado' conforme regra
-                                        }
-                                        delete newData.totalGoals; // Remove campo antigo
-
-                                        tempStore.add(newData); // Adiciona na nova store
-                                        cursor.continue();
-                                    } else {
-                                        // Quando o cursor termina, a migração está feita para a store temporária
-                                        db.deleteObjectStore(OBJECT_STORE_NAME); // Exclui a antiga
-                                        // IndexedDB V3+ permite renomear stores dentro de onupgradeneeded
-                                        // Porém, renomear NÃO MUDA a estrutura.
-                                        // A forma mais robusta é excluir e recriar com o mesmo nome mas nova estrutura
-                                        // O que já acontece no IF acima se a store não existisse.
-                                        // Como ela EXISTE, apenas confiamos que novos dados serão salvos com a nova estrutura.
-                                        // A lógica de leitura/exibição/dashboard deve ser robusta o suficiente para lidar
-                                        // com objetos que podem ter a estrutura antiga ou nova.
-                                    }
-                                };
-                             } catch (e) {
-                                 console.error("Migration failed:", e);
-                                 // Decidir se falha a abertura do DB ou continua
-                             }
-                             */
-                        }
+                        // Lógica de migração real de dados antigos para o novo formato (se necessário)
+                        // Como mencionamos, a migração complexa de totalGoals string para totalGoalsExact number
+                        // não será totalmente automatizada aqui. O código de leitura e dashboard
+                        // lidará com a ausência do campo totalGoalsExact em dados antigos.
                     }
                 };
 
@@ -990,13 +1002,14 @@
                      resolve(event.target.result);
                 };
                  request.onerror = (event) => {
-                     console.error("Error getting prediction by ID:", event.target.error);
+                     console.error("Error getting prediction by ID:", id, event.target.error);
                      reject(event.target.error);
                  };
             });
         }
 
 
+         // Alterada para ASYNC para poder await loadPredictions
         async function addOrUpdatePrediction(predictionData) {
             if (!db) {
                 console.error("Database not open.");
@@ -1008,34 +1021,54 @@
             const objectStore = transaction.objectStore(OBJECT_STORE_NAME);
 
             let request;
-            if (predictionData.id) {
-                // Se tem ID, é uma atualização
+            const isUpdate = predictionData.id !== undefined; // Verifica se já tem ID
+
+            if (isUpdate) {
+                // Se tem ID, é uma atualização (usa put)
+                console.log("Attempting to update prediction with data:", predictionData);
                 request = objectStore.put(predictionData);
-                console.log("Attempting to update prediction:", predictionData);
+
             } else {
-                // Se não tem ID, é uma nova adição (ID será autoIncrementado)
-                 // Adiciona timestamp de criação apenas para novos registros
-                 predictionData.createdAt = Date.now();
+                // Se não tem ID, é uma nova adição (usa add)
+                // Adiciona timestamp de criação apenas para novos registros
+                predictionData.createdAt = Date.now();
+                console.log("Attempting to add new prediction with data:", predictionData);
                 request = objectStore.add(predictionData);
-                 console.log("Attempting to add prediction:", predictionData);
             }
 
+            // Await a requisição do IndexedDB diretamente para simplificar o fluxo assíncrono
+            // Transformando o onsuccess/onerror em Promises
+            return new Promise((resolve, reject) => {
+                request.onsuccess = async (event) => {
+                    const action = isUpdate ? 'atualizada' : 'registrada';
+                    const savedId = event.target.result; // O ID do registro salvo/atualizado
+                    console.log(`Prediction ${action} successfully. ID:`, savedId);
+                    alert(`Previsão ${action} com sucesso!`);
 
-            request.onsuccess = () => {
-                 const action = predictionData.id ? 'atualizada' : 'registrada';
-                console.log(`Prediction ${action}:`, request.result); // request.result é o key (ID)
-                alert(`Previsão ${action} com sucesso!`);
-                resetForm(); // Reseta o formulário após salvar
-                currentAI = null; // Limpa a IA selecionada
-                showScreen(homeScreen); // Volta para a Home
-                loadPredictions(); // Recarrega a lista na home
-            };
+                    // Limpa o formulário e o estado antes de carregar a lista e voltar para Home
+                    resetForm();
+                    currentAI = null; // Limpa a IA selecionada após salvar
 
-            request.onerror = (event) => {
-                 const action = predictionData.id ? 'atualizar' : 'registrar';
-                console.error(`Error ${action} prediction:`, event.target.error);
-                alert(`Erro ao ${action} previsão.`);
-            };
+                    try {
+                        console.log(`addOrUpdatePrediction success: Calling loadPredictions and awaiting...`);
+                        await loadPredictions(); // Garante que a lista foi recarregada antes de mostrar a tela
+                        console.log(`addOrUpdatePrediction success: loadPredictions finished. Showing home screen.`);
+                        showScreen(homeScreen); // Só mostra a tela após o carregamento completo
+                    } catch (e) {
+                        console.error("Erro ao carregar previsões após registrar:", e);
+                        alert("Erro ao atualizar a lista de partidas.");
+                    }
+
+                    resolve(savedId); // Resolve a promise com o ID
+                };
+
+                request.onerror = (event) => {
+                    const action = isUpdate ? 'atualizar' : 'registrar';
+                    console.error(`Error ${action} prediction:`, predictionData.id || 'novo', event.target.error);
+                    alert(`Erro ao ${action} previsão.`);
+                    reject(event.target.error); // Rejeita a promise
+                };
+            });
         }
 
          async function deletePrediction(id) {
@@ -1051,16 +1084,22 @@
             const request = objectStore.delete(id);
             console.log("Attempting to delete prediction with ID:", id);
 
-             request.onsuccess = () => {
-                console.log("Prediction deleted:", id);
-                alert("Previsão excluída com sucesso!");
-                loadPredictions(); // Recarrega a lista na home
-             };
+             // Await a requisição de delete para simplificar o fluxo assíncrono
+            return new Promise((resolve, reject) => {
+                request.onsuccess = async () => { // Make async to await loadPredictions
+                   console.log("Prediction deleted successfully:", id);
+                   alert("Previsão excluída com sucesso!");
+                   await loadPredictions(); // Recarrega a lista na home após exclusão
+                   // Não precisa chamar showScreen(homeScreen) aqui, pois delete só é chamado na tela Home
+                   resolve(); // Resolve a promise
+                };
 
-             request.onerror = (event) => {
-                 console.error("Error deleting prediction:", id, event.target.error);
-                 alert("Erro ao excluir previsão.");
-             };
+                request.onerror = (event) => {
+                    console.error("Error deleting prediction:", id, event.target.error);
+                    alert("Erro ao excluir previsão.");
+                    reject(event.target.error); // Rejeita a promise
+                };
+            });
          }
 
 
@@ -1086,22 +1125,32 @@
         }
 
         async function loadPredictions() {
+            console.log("loadPredictions: Starting fetch and render process...");
             predictionsList.innerHTML = ''; // Limpa a lista atual
             predictionsList.appendChild(loadingMessage); // Mostra mensagem de carregando
             loadingMessage.classList.remove('hidden');
             noPredictionsMessage.classList.add('hidden');
 
             try {
+                console.log("loadPredictions: Fetching predictions from DB...");
                 const predictions = await getAllPredictions();
+                console.log("loadPredictions: Fetched", predictions.length, "predictions. Data sample:", predictions.slice(0, 3)); // Log sample data
 
-                predictionsList.innerHTML = ''; // Limpa a lista após carregar
+                predictionsList.innerHTML = ''; // Limpa a lista após carregar (remove loading)
                 if (predictions.length === 0) {
+                    console.log("loadPredictions: No predictions found.");
                     noPredictionsMessage.classList.remove('hidden');
                     predictionsList.appendChild(noPredictionsMessage);
                 } else {
+                    console.log("loadPredictions: Rendering predictions...");
                     noPredictionsMessage.classList.add('hidden');
                     // Ordena por data (mais recente primeiro), fallback para timestamp de criação se data não existir
-                    predictions.sort((a, b) => new Date(b.matchDatetime || b.createdAt || 0) - new Date(a.matchDatetime || a.createdAt || 0));
+                    predictions.sort((a, b) => {
+                         const dateA = new Date(a.matchDatetime || a.createdAt || 0);
+                         const dateB = new Date(b.matchDatetime || b.createdAt || 0);
+                         return dateB - dateA;
+                    });
+
 
                     predictions.forEach(prediction => {
                         const listItem = document.createElement('li');
@@ -1109,27 +1158,47 @@
 
                          // Formatar data/hora para exibição
                          const matchDate = prediction.matchDatetime ? new Date(prediction.matchDatetime) : null;
-                         const formattedDate = matchDate ? matchDate.toLocaleDateString('pt-BR', {
+                         const formattedDate = matchDate && !isNaN(matchDate) ? matchDate.toLocaleDateString('pt-BR', { // Check if date is valid
                              year: 'numeric', month: '2-digit', day: '2-digit'
                          }) : 'Não informada';
-                         const formattedTime = matchDate ? matchDate.toLocaleTimeString('pt-BR', {
+                         const formattedTime = matchDate && !isNaN(matchDate) ? matchDate.toLocaleTimeString('pt-BR', { // Check if date is valid
                              hour: '2-digit', minute: '2-digit'
                          }) : '';
 
 
                         // Lida com campos que podem não existir em dados salvos em versões anteriores
-                        const htScoreDisplay = (prediction.htScoreHome !== null && prediction.htScoreHome !== undefined && prediction.htScoreAway !== null && prediction.htScoreAway !== undefined)
-                                             ? `${prediction.htScoreHome !== null ? prediction.htScoreHome : '?'}-${prediction.htScoreAway !== null ? prediction.htScoreAway : '?'}`
-                                             : (prediction.htScore !== null && prediction.htScore !== undefined ? prediction.htScore : 'Não Informado'); // fallback para formato antigo se existir
+                        // Placar HT: Tenta usar os campos home/away (V2+), se não existirem, tenta o campo htScore antigo (string V1)
+                        let htScoreDisplay = 'Não Informado';
+                        if (prediction.htScoreHome !== null && prediction.htScoreHome !== undefined && prediction.htScoreAway !== null && prediction.htScoreAway !== undefined) {
+                             htScoreDisplay = `${prediction.htScoreHome !== null ? prediction.htScoreHome : '?'}-${prediction.htScoreAway !== null ? prediction.htScoreAway : '?'}`;
+                        } else if (typeof prediction.htScore === 'string' && prediction.htScore.trim() !== '') {
+                             htScoreDisplay = prediction.htScore; // Dados antigos (V1)
+                        }
 
-                        const ftScoreDisplay = (prediction.ftScoreHome !== null && prediction.ftScoreHome !== undefined && prediction.ftScoreAway !== null && prediction.ftScoreAway !== undefined)
-                                              ? `${prediction.ftScoreHome !== null ? prediction.ftScoreHome : '?'}-${prediction.ftScoreAway !== null ? prediction.ftScoreAway : '?'}`
-                                              : 'Não Informado';
+
+                        // Placar FT: Tenta usar os campos home/away (V2+)
+                         let ftScoreDisplay = 'Não Informado';
+                         if (prediction.ftScoreHome !== null && prediction.ftScoreHome !== undefined && prediction.ftScoreAway !== null && prediction.ftScoreAway !== undefined) {
+                             ftScoreDisplay = `${prediction.ftScoreHome !== null ? prediction.ftScoreHome : '?'}-${prediction.ftScoreAway !== null ? prediction.ftScoreAway : '?'}`;
+                         }
+
 
                         const favoriteTeamDisplay = prediction.favoriteTeam || 'Não Informado';
                         const ftResultDisplay = prediction.ftResult || 'Não Informado';
-                        // Exibe o novo campo totalGoalsExact
-                        const totalGoalsDisplay = (prediction.totalGoalsExact !== null && prediction.totalGoalsExact !== undefined) ? prediction.totalGoalsExact : 'Não Informado';
+
+                         // Exibe o novo campo totalGoalsExact (V4+), ou o antigo totalGoals (string V1/V2/V3), ou 'Não Informado'
+                         let totalGoalsDisplay = 'Não Informado';
+                         if (prediction.totalGoalsExact !== null && prediction.totalGoalsExact !== undefined) {
+                             totalGoalsDisplay = prediction.totalGoalsExact; // V4+ (number)
+                         } else if (typeof prediction.totalGoals === 'string' && prediction.totalGoals.trim() !== '') {
+                              totalGoalsDisplay = prediction.total; // <-- CORRIGIDO: Era prediction.total, deve ser prediction.totalGoals
+                              totalGoalsDisplay = prediction.totalGoals; // V1/V2/V3 (string do select)
+                         } else {
+                              // Casos onde totalGoalsExact e totalGoals não existem ou são inválidos
+                             totalGoalsDisplay = 'Não Informado';
+                         }
+
+
                         const bttsDisplay = prediction.btts || 'Não Informado';
                         const firstScorerDisplay = prediction.firstScorer || 'Não Informado';
                          const firstGoalMinuteDisplay = prediction.firstGoalMinuteSelect || 'Não Informado';
@@ -1137,31 +1206,33 @@
 
 
                         listItem.innerHTML = `
-                            <h3>${prediction.homeTeam || 'Time da Casa Não Informado'} vs ${prediction.awayTeam || 'Time Visitante Não Informado'}</h3>
+                            <h3>${prediction.homeTeam || 'Time da Casa Não Informado'} vs ${prediction.awayTeam || 'Visitante Não Informado'}</h3>
                             <div class="prediction-actions">
                                 <button class="edit-btn" data-id="${prediction.id}">Editar</button>
                                 <button class="delete-btn" data-id="${prediction.id}">Excluir</button>
                             </div>
                             <p><strong>Data/Hora:</strong> ${formattedDate} ${formattedTime}</p>
                             <p><strong>IA Utilizada:</strong> ${prediction.ai || 'Não Informada'}</p>
-                            <p><strong>Favorito (IA):</strong> ${favoriteTeamDisplay}</p>
-                            <p><strong>Placar HT Previsto:</strong> ${htScoreDisplay}</p>
-                            <p><strong>Resultado FT (1X2) Previsto:</strong> ${ftResultDisplay}</p>
-                             <p><strong>Placar FT Previsto:</strong> ${ftScoreDisplay}</p>
-                            <p><strong>Total Gols Exato Previsto:</strong> ${totalGoalsDisplay}</p> <!-- Label alterado -->
-                            <p><strong>BTTS Previsto:</strong> ${bttsDisplay}</p>
-                            <p><strong>Primeiro Gol Previsto:</strong> ${firstScorerDisplay}</p>
-                            <p><strong>Minuto 1º Gol Previsto:</strong> ${firstGoalMinuteDisplay}</p>
-                            <p><strong>Gol 2º Tempo (>75') Previsto:</strong> ${secondHalfGoal75Display}</p>
+                            <p><strong>Favorito:</strong> ${favoriteTeamDisplay}</p>
+                            <p><strong>Placar HT:</strong> ${htScoreDisplay}</p>
+                            <p><strong>Resultado FT:</strong> ${ftResultDisplay}</p>
+                             <p><strong>Placar FT:</strong> ${ftScoreDisplay}</p>
+                            <p><strong>Total Gols da partida:</strong> ${totalGoalsDisplay}</p> <!-- Label alterado -->
+                            <p><strong>BTTS:</strong> ${bttsDisplay}</p>
+                            <p><strong>Primeiro Gol:</strong> ${firstScorerDisplay}</p>
+                            <p><strong>Minuto 1º Gol HT:</strong> ${firstGoalMinuteDisplay}</p>
+                            <p><strong>Gol 2º Tempo (>75'):</strong> ${secondHalfGoal75Display}</p>
                         `;
                         predictionsList.appendChild(listItem);
                     });
+                     console.log("loadPredictions: Finished rendering predictions.");
                 }
             } catch (error) {
                 console.error("Failed to load predictions:", error);
                 predictionsList.innerHTML = '<li class="prediction-item">Erro ao carregar previsões.</li>';
             } finally {
-                 loadingMessage.classList.add('hidden');
+                console.log("loadPredictions: Hiding loading message.");
+                loadingMessage.classList.add('hidden');
             }
         }
 
@@ -1184,10 +1255,10 @@
                 const analysisCounts = {
                     aiCount: {},
                     ftResultCount: {},
-                    totalGoalsExactCount: {}, // Alterado para exato
+                    totalGoalsExactCount: {}, // Alterado para exato (V4+)
                     bttsCount: {},
                     firstScorerCount: {},
-                    firstGoalMinuteCount: {},
+                    firstGoalMinuteCount: {}, // Para o select de minuto (V3+)
                     secondHalfGoal75Count: {},
                     favoriteTeamCount: {},
                     ftScoreHomeDistribution: { '0': 0, '1': 0, '2+': 0 },
@@ -1198,17 +1269,21 @@
                     over2_5Exact: 0,
                     under2_5Exact: 0,
                      notInformedTotalGoalsExact: 0,
+                      // Contagem para Total de Gols (antigo select - V1/V2/V3) - para dados migrados/antigos
+                     totalGoalsSelectCount: {},
                 };
 
                 // Inicializa contadores para todos os valores possíveis dos selects
                  ['Grok', 'OpenAI', 'Perplexity AI'].forEach(ai => analysisCounts.aiCount[ai] = 0);
-                 ['Vitória Casa', 'Empate', 'Vitória Visitante', 'Nao Informado'].forEach(res => analysisCounts.ftResultCount[res] = 0);
+                 ['Casa', 'Empate', 'Fora'].forEach(res => analysisCounts.ftResultCount[res] = 0);
                  // totalGoalsExactCount será preenchido dinamicamente por números
                  ['Sim', 'Não', 'Nao Informado'].forEach(btts => analysisCounts.bttsCount[btts] = 0);
-                 ['Time da Casa', 'Time Visitante', 'Sem Gols', 'Nao Informado'].forEach(scorer => analysisCounts.firstScorerCount[scorer] = 0);
+                 ['Casa', 'Visitante', 'Sem Gols', 'Nao Informado'].forEach(scorer => analysisCounts.firstScorerCount[scorer] = 0);
                  ['1-14', '15-29', '30-45', '46-60', '61-75', '76-90+', 'Sem Gols', 'Nao Informado'].forEach(minute => analysisCounts.firstGoalMinuteCount[minute] = 0);
                  ['Antes dos 75\'', 'Após os 75\'', 'Nenhum Gol no Segundo Tempo', 'Nao Informado'].forEach(goal75 => analysisCounts.secondHalfGoal75Count[goal75] = 0);
-                 ['Time da Casa', 'Time Visitante', 'Nenhum', 'Nao Informado'].forEach(fav => analysisCounts.favoriteTeamCount[fav] = 0);
+                 ['Casa', 'Visitante', 'Nenhum', 'Nao Informado'].forEach(fav => analysisCounts.favoriteTeamCount[fav] = 0);
+                 // Inicializa contadores para o antigo select totalGoals
+                 ['Acima de 0.5','Abaixo de 0.5','Acima de 1.5','Abaixo de 1.5','Acima de 2.5','Abaixo de 2.5','Acima de 3.5','Abaixo de 3.5','Nao Informado'].forEach(goals => analysisCounts.totalGoalsSelectCount[goals] = 0);
 
 
                 predictions.forEach(p => {
@@ -1227,37 +1302,41 @@
                      // Contagem por Time Favorito
                      analysisCounts.favoriteTeamCount[p.favoriteTeam || 'Nao Informado'] = (analysisCounts.favoriteTeamCount[p.favoriteTeam || 'Nao Informado'] || 0) + 1;
 
-                     // Contagem por Total de Gols Exato
-                     if (p.totalGoalsExact !== null && p.totalGoalsExact !== undefined) {
+                     // Contagem por Total de Gols Exato (para dados V4+)
+                     if (p.totalGoalsExact !== null && p.totalGoalsExact !== undefined && !isNaN(p.totalGoalsExact)) { // Verifica se é número válido
                          const total = p.totalGoalsExact;
                          analysisCounts.totalGoalsExactCount[total] = (analysisCounts.totalGoalsExactCount[total] || 0) + 1;
                           // Contagem para Over/Under 2.5 baseado no exato
                          if (total > 2.5) analysisCounts.over2_5Exact++;
                          else analysisCounts.under2_5Exact++;
-                     } else {
-                          analysisCounts.notInformedTotalGoalsExact++;
+                     } else if (typeof p.totalGoals === 'string' && p.totalGoals.trim() !== '') {
+                         // Contagem para Total de Gols (antigo select) para dados V1/V2/V3
+                          analysisCounts.totalGoalsSelectCount[p.totalGoals] = (analysisCounts.totalGoalsSelectCount[p.totalGoals] || 0) + 1;
+                     }
+                     else {
+                          analysisCounts.notInformedTotalGoalsExact++; // Conta não informados (inclui dados antigos sem campo ou v4 sem valor numérico)
                      }
 
 
                      // Distribuição simples de FT Scores (Casa/Fora)
-                     if (p.ftScoreHome !== null && p.ftScoreHome !== undefined) {
+                     if (p.ftScoreHome !== null && p.ftScoreHome !== undefined && !isNaN(p.ftScoreHome)) {
                          if (p.ftScoreHome === 0) analysisCounts.ftScoreHomeDistribution['0']++;
                          else if (p.ftScoreHome === 1) analysisCounts.ftScoreHomeDistribution['1']++;
                          else analysisCounts.ftScoreHomeDistribution['2+']++;
                      }
-                     if (p.ftScoreAway !== null && p.ftScoreAway !== undefined) {
+                     if (p.ftScoreAway !== null && p.ftScoreAway !== undefined && !isNaN(p.ftScoreAway)) {
                           if (p.ftScoreAway === 0) analysisCounts.ftScoreAwayDistribution['0']++;
                          else if (p.ftScoreAway === 1) analysisCounts.ftScoreAwayDistribution['1']++;
                          else analysisCounts.ftScoreAwayDistribution['2+']++;
                      }
                       // Distribuição simples de HT Scores (Casa/Fora)
                       // Nota: Dados da v1 com HT Score string '1-0' não são contados aqui.
-                     if (p.htScoreHome !== null && p.htScoreHome !== undefined) {
+                     if (p.htScoreHome !== null && p.htScoreHome !== undefined && !isNaN(p.htScoreHome)) {
                          if (p.htScoreHome === 0) analysisCounts.htScoreHomeDistribution['0']++;
                          else if (p.htScoreHome === 1) analysisCounts.htScoreHomeDistribution['1']++;
                          else analysisCounts.htScoreHomeDistribution['2+']++;
                      }
-                     if (p.htScoreAway !== null && p.htScoreAway !== undefined) {
+                     if (p.htScoreAway !== null && p.htScoreAway !== undefined && !isNaN(p.htScoreAway)) {
                           if (p.htScoreAway === 0) analysisCounts.htScoreAwayDistribution['0']++;
                          else if (p.htScoreAway === 1) analysisCounts.htScoreAwayDistribution['1']++;
                          else analysisCounts.htScoreAwayDistribution['2+']++;
@@ -1268,17 +1347,27 @@
 
 
                  // Função auxiliar para criar um item de análise
-                 function createAnalysisItem(title, value, total, valueLabel) {
+                 function createAnalysisItem(title, value, total, valueLabel, cardNumber) {
                      const percentage = total > 0 ? (value / total) * 100 : 0;
                      let colorClass = 'white'; // Base
-                     if (percentage > 30) colorClass = 'yellow'; // Amarelo acima de 30%
+                     if (percentage > 30) colorClass = 'yellow'; // Amarelo acima de 30% (arbitrário)
                      if (percentage > 89) colorClass = 'green'; // Verde acima de 89% (conforme solicitado)
-
 
                      const itemDiv = document.createElement('div');
                      itemDiv.classList.add('analysis-item');
+                     itemDiv.style.position = 'relative';
+
+                     // Ajuste do título para BTTS
+                     let displayTitle;
+                     if (title === 'Por BTTS Previsto') {
+                         displayTitle = `BTTS : ${valueLabel || value} (${value} de ${total})`;
+                     } else {
+                         displayTitle = `${title}: ${valueLabel || value} (${value} de ${total})`;
+                     }
+
                      itemDiv.innerHTML = `
-                         <h3>${title}: ${valueLabel || value} (${value} de ${total})</h3>
+                         <span class="card-identifier">card-${cardNumber}</span>
+                         <h3>${displayTitle}</h3>
                          <div class="progress-bar-container">
                              <div class="progress-bar ${colorClass}" style="width: ${percentage.toFixed(1)}%;"></div>
                              <div class="progress-text">${percentage.toFixed(1)}%</div>
@@ -1288,7 +1377,8 @@
                  }
 
                  // Adicionar itens de análise ao container - Total de Previsões
-                 analysisContainer.appendChild(createAnalysisItem('Total de Previsões Registradas', totalPredictions, totalPredictions, totalPredictions));
+                 let cardCounter = 1;
+                 analysisContainer.appendChild(createAnalysisItem('Total de partidas Registradas', totalPredictions, totalPredictions, totalPredictions, cardCounter++));
 
                  // Análises Por Categoria (Garante ordem e ignora 'Não Informado' se a contagem for 0)
                  const analysisCategories = {
@@ -1323,7 +1413,7 @@
                      sortedKeys.forEach(key => {
                          const count = counts[key];
                          if (count > 0) { // Só exibe se houver pelo menos 1 ocorrência
-                            analysisContainer.appendChild(createAnalysisItem(categoryTitle, count, totalPredictions, key));
+                            analysisContainer.appendChild(createAnalysisItem(categoryTitle, count, totalPredictions, key, cardCounter++));
                          }
                      });
                  }
@@ -1333,18 +1423,29 @@
                  sortedTotalGoalsExactKeys.forEach(key => {
                      const count = analysisCounts.totalGoalsExactCount[key];
                       if (count > 0) {
-                          analysisContainer.appendChild(createAnalysisItem('Total de Gols Exato Previsto', count, totalPredictions, key));
+                          analysisContainer.appendChild(createAnalysisItem('Total de Gols Exato Previsto', count, totalPredictions, key, cardCounter++));
                      }
                  });
-                 // Análise de Total de Gols Exato (Não Informado)
+                // Análise de Total de Gols (antigo select) - para dados migrados/antigos
+                 const sortedTotalGoalsSelectKeys = Object.keys(analysisCounts.totalGoalsSelectCount).sort(); // Ordena alfabeticamente
+                 sortedTotalGoalsSelectKeys.forEach(key => {
+                      const count = analysisCounts.totalGoalsSelectCount[key];
+                      if (count > 0) {
+                           analysisContainer.appendChild(createAnalysisItem('Total de Gols (Linha Prevista - Legado)', count, totalPredictions, key, cardCounter++));
+                      }
+                 });
+                 // Análise de Total de Gols (Não Informado - inclui os que eram null/undefined/'' nos dois campos)
                  if(analysisCounts.notInformedTotalGoalsExact > 0) {
-                      analysisContainer.appendChild(createAnalysisItem('Total de Gols Exato Previsto', analysisCounts.notInformedTotalGoalsExact, totalPredictions, 'Não Informado'));
+                      analysisContainer.appendChild(createAnalysisItem('Total de Gols Previsto', analysisCounts.notInformedTotalGoalsExact, totalPredictions, 'Não Informado', cardCounter++));
                  }
 
+
                  // Análise de Over/Under 2.5 baseado no exato
-                 if(analysisCounts.over2_5Exact + analysisCounts.under2_5Exact > 0) { // Só mostra se houver dados numéricos
-                     analysisContainer.appendChild(createAnalysisItem('Previsão Over 2.5 (Exato)', analysisCounts.over2_5Exact, analysisCounts.over2_5Exact + analysisCounts.under2_5Exact, 'Over 2.5'));
-                     analysisContainer.appendChild(createAnalysisItem('Previsão Under 2.5 (Exato)', analysisCounts.under2_5Exact, analysisCounts.over2_5Exact + analysisCounts.under2_5Exact, 'Under 2.5'));
+                 // A análise só faz sentido se houver pelo menos uma previsão com totalGoalsExact numérico válido
+                 const totalWithExactGoals = analysisCounts.over2_5Exact + analysisCounts.under2_5Exact;
+                 if(totalWithExactGoals > 0) {
+                     analysisContainer.appendChild(createAnalysisItem('Previsão Over 2.5 (Baseado no Exato)', analysisCounts.over2_5Exact, totalWithExactGoals, 'Over 2.5', cardCounter++));
+                     analysisContainer.appendChild(createAnalysisItem('Previsão Under 2.5 (Baseado no Exato)', analysisCounts.under2_5Exact, totalWithExactGoals, 'Under 2.5', cardCounter++));
                  }
 
 
@@ -1361,22 +1462,10 @@
 
         // --- Funções de Exportar/Importar ---
 
-        function escapeCsvField(field) {
-            if (field === null || field === undefined) return '';
-            // Converte para string
-            let stringField = String(field);
-             // Se o campo contém vírgulas, aspas duplas ou quebras de linha, envolva-o em aspas duplas
-            if (stringField.includes(',') || stringField.includes('"') || stringField.includes('\n') || stringField.includes('\r')) {
-                 // Escapa as aspas duplas internas duplicando-as
-                 stringField = stringField.replace(/"/g, '""');
-                 return `"${stringField}"`;
-            }
-            return stringField;
-        }
 
 
-        async function exportPredictionsCsv() {
-             try {
+        async function exportPredictionsXlsx() {
+            try {
                 const predictions = await getAllPredictions();
 
                 if (predictions.length === 0) {
@@ -1384,216 +1473,322 @@
                     return;
                 }
 
-                // Define os cabeçalhos do CSV (deve corresponder aos campos do objeto prediction na V4)
-                // Nota: Dados mais antigos podem não ter todos esses campos (ex: totalGoalsExact)
-                const headers = [
-                     'ai', 'homeTeam', 'awayTeam', 'matchDatetime', 'favoriteTeam',
-                     'htScoreHome', 'htScoreAway', 'ftResult', 'ftScoreHome', 'ftScoreAway',
-                     'totalGoalsExact', /* Alterado */ 'btts', 'firstScorer', 'firstGoalMinuteSelect', 'secondHalfGoal75',
-                     'createdAt'
+                // Ordem e rótulos conforme exibido na lista de previsões
+                const columns = [
+                    { label: "Jogo", get: p => `${p.homeTeam || ''} vs ${p.awayTeam || ''}` },
+                    { label: "Data/Hora", get: p => {
+                        if (!p.matchDatetime) return '';
+                        const d = new Date(p.matchDatetime);
+                        if (isNaN(d)) return '';
+                        return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                    }},
+                    { label: "IA Utilizada", get: p => p.ai || '' },
+                    { label: "Favorito", get: p => p.favoriteTeam || '' },
+                    { label: "Placar HT", get: p => {
+                        if (p.htScoreHome !== null && p.htScoreHome !== undefined && p.htScoreAway !== null && p.htScoreAway !== undefined)
+                            return `${p.htScoreHome}-${p.htScoreAway}`;
+                        if (typeof p.htScore === 'string' && p.htScore.trim() !== '')
+                            return p.htScore;
+                        return '';
+                    }},
+                    { label: "Resultado FT", get: p => p.ftResult || '' },
+                    { label: "Placar FT", get: p => {
+                        if (p.ftScoreHome !== null && p.ftScoreHome !== undefined && p.ftScoreAway !== null && p.ftScoreAway !== undefined)
+                            return `${p.ftScoreHome}-${p.ftScoreAway}`;
+                        return '';
+                    }},
+                    { label: "Total Gols da partida", get: p => {
+                        if (p.totalGoalsExact !== null && p.totalGoalsExact !== undefined)
+                            return p.totalGoalsExact;
+                        if (typeof p.totalGoals === 'string' && p.totalGoals.trim() !== '')
+                            return p.totalGoals;
+                        return '';
+                    }},
+                    { label: "BTTS", get: p => p.btts || '' },
+                    { label: "Primeiro Gol", get: p => p.firstScorer || '' },
+                    { label: "Minuto 1º Gol HT", get: p => p.firstGoalMinuteSelect || '' },
+                    { label: "Gol 2º Tempo (>75')", get: p => p.secondHalfGoal75 || '' }
                 ];
 
-                // Cria as linhas de dados
-                const rows = predictions.map(p => {
-                    return headers.map(header => escapeCsvField(p[header])).join(',');
-                });
+                // Monta os dados como array de arrays (primeira linha = cabeçalhos)
+                const data = [
+                    columns.map(col => col.label),
+                    ...predictions.map(p => columns.map(col => col.get(p)))
+                ];
 
-                // Junta cabeçalhos e linhas
-                const csvContent = [headers.join(','), ...rows].join('\n');
+                // Cria a worksheet e o workbook
+                const ws = XLSX.utils.aoa_to_sheet(data);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Partidas");
 
-                // Cria um Blob e um URL para download
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                // Gera o arquivo XLSX
+                const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+                // Cria link para download
                 const url = URL.createObjectURL(blob);
-
-                // Cria um link temporário para download
                 const link = document.createElement('a');
-                link.setAttribute('href', url);
-                link.setAttribute('download', 'ai_bet_predictions.csv');
-                link.style.visibility = 'hidden';
+                link.href = url;
+                link.download = 'ai_bet_predictions.xlsx';
                 document.body.appendChild(link);
-
-                // Dispara o download
                 link.click();
-
-                // Limpa o link e o URL temporário
                 document.body.removeChild(link);
                 URL.revokeObjectURL(url);
 
                 console.log("Predictions exported successfully.");
-                 alert("Dados exportados para ai_bet_predictions.csv");
-
-             } catch (error) {
-                 console.error("Error exporting predictions:", error);
-                 alert("Erro ao exportar dados.");
-             }
+                alert("Dados exportados para ai_bet_predictions.xlsx");
+            } catch (error) {
+                console.error("Erro detalhado ao exportar XLSX:", error, error && error.stack);
+                alert("Erro ao exportar dados: " + (error && error.message ? error.message : error));
+            }
         }
 
-         function parseCsv(csvString) {
-            // Regex para dividir linhas, considerando quebras de linha dentro de campos quotados
-             const lines = csvString.split(/\r\n|\n/);
-             if (lines.length < 2) { // Precisa pelo menos de cabeçalho e uma linha de dados
-                 console.warn("CSV string is empty or has only headers.");
-                 return [];
-             }
-             const headers = lines[0].split(',').map(h => h.trim()); // Assume que a primeira linha é o cabeçalho
 
-            const data = [];
-             // Regex para separar campos, lida com aspas duplas e vírgulas dentro
-             const csvRegex = /"((?:[^"\\]|\\.)*)"|([^,\r\n]*)(?:,|$)/g;
-
-            for (let i = 1; i < lines.length; i++) {
-                if (lines[i].trim() === '') continue; // Ignora linhas vazias
-
-                const fields = [];
-                let match;
-                let line = lines[i];
-                 csvRegex.lastIndex = 0; // Reseta o índice de busca para cada nova linha
-
-                // Percorre a linha capturando campos
-                while ((match = csvRegex.exec(line)) !== null) {
-                    // match[1] é o conteúdo entre aspas (se houver), match[2] é o conteúdo sem aspas
-                     let field = match[1] !== undefined ? match[1].replace(/""/g, '"') : match[2];
-                     fields.push(field);
-                     // Se a última captura foi o final da linha, sai
-                     if (match.index + match[0].length === line.length) {
-                          break;
-                     }
-                }
-
-
-                const rowData = {};
-                 // Mapeia campos para o cabeçalho
-                headers.forEach((header, index) => {
-                     rowData[header] = fields[index] !== undefined ? fields[index] : ''; // Trata campos ausentes
-                });
-                data.push(rowData);
+        async function importPredictionsXlsx(file) {
+            if (!file) {
+                alert("Por favor, selecione um arquivo XLSX para importar.");
+                return;
             }
-            return data;
-         }
 
-        async function importPredictionsCsv(file) {
-             if (!file) {
-                 alert("Por favor, selecione um arquivo para importar.");
-                 return;
-             }
+            // Verificação da extensão do arquivo
+            if (!file.name.toLowerCase().endsWith('.xlsx')) {
+                alert("Por favor, selecione um arquivo com extensão .xlsx.");
+                console.error("Arquivo selecionado não é XLSX:", file.name);
+                return;
+            }
+
+            console.log("Arquivo XLSX selecionado:", file.name, file);
 
             const reader = new FileReader();
 
             reader.onload = async (event) => {
                 try {
-                    const csvString = event.target.result;
-                    const importedData = parseCsv(csvString);
+                    console.log("Leitura do arquivo concluída, processando ArrayBuffer...");
+                    const data = new Uint8Array(event.target.result);
+
+                    let workbook;
+                    try {
+                        workbook = XLSX.read(data, { type: 'array' });
+                        console.log("Workbook XLSX lido com sucesso:", workbook);
+                    } catch (parseErr) {
+                        console.error("Erro ao fazer parsing do arquivo XLSX:", parseErr);
+                        alert("Erro ao ler o arquivo XLSX. Verifique se o arquivo está íntegro.");
+                        importFile.value = '';
+                        return;
+                    }
+
+                    const sheetName = workbook.SheetNames[0];
+                    if (!sheetName) {
+                        alert("O arquivo XLSX não possui planilhas.");
+                        console.error("Nenhuma planilha encontrada no arquivo XLSX.");
+                        importFile.value = '';
+                        return;
+                    }
+                    const worksheet = workbook.Sheets[sheetName];
+                    if (!worksheet) {
+                        alert("Não foi possível acessar a primeira planilha do arquivo XLSX.");
+                        console.error("Worksheet não encontrada:", sheetName);
+                        importFile.value = '';
+                        return;
+                    }
+
+                    const importedData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+                    console.log("Dados extraídos da planilha:", importedData);
 
                     if (importedData.length === 0) {
-                        alert("Nenhum dado válido encontrado no arquivo CSV.");
-                        importFile.value = ''; // Limpa o input do arquivo
+                        alert("Nenhum dado válido encontrado no arquivo XLSX.");
+                        importFile.value = '';
                         return;
                     }
 
                     if (!db) {
-                         alert("Erro: Banco de dados não disponível para importação.");
-                         importFile.value = ''; // Limpa o input do arquivo
-                         return;
+                        alert("Erro: Banco de dados não disponível para importação.");
+                        importFile.value = '';
+                        return;
                     }
 
-                     const transaction = db.transaction(OBJECT_STORE_NAME, 'readwrite');
-                     const objectStore = transaction.objectStore(OBJECT_STORE_NAME);
+                    // Mapeamento dos rótulos das colunas para as propriedades do objeto de previsão
+                    const labelToProp = {
+                        "Jogo": ["homeTeam", "awayTeam"], // será tratado separadamente
+                        "Data/Hora": "matchDatetime",
+                        "IA Utilizada": "ai",
+                        "Favorito": "favoriteTeam",
+                        "Placar HT": ["htScoreHome", "htScoreAway", "htScore"], // pode ser string ou dois campos
+                        "Resultado FT": "ftResult",
+                        "Placar FT": ["ftScoreHome", "ftScoreAway"],
+                        "Total Gols da partida": ["totalGoalsExact", "totalGoals"],
+                        "BTTS": "btts",
+                        "Primeiro Gol": "firstScorer",
+                        "Minuto 1º Gol HT": "firstGoalMinuteSelect",
+                        "Gol 2º Tempo (>75')": "secondHalfGoal75"
+                    };
 
-                     let addedCount = 0;
-                     let errorCount = 0;
-                     let totalToImport = importedData.length;
-                     let processedCount = 0;
+                    const transaction = db.transaction(OBJECT_STORE_NAME, 'readwrite');
+                    const objectStore = transaction.objectStore(OBJECT_STORE_NAME);
 
-                     // Itera sobre os dados importados e adiciona ao DB
-                     importedData.forEach(row => {
-                         const predictionData = {
-                             // Mapeia e converte tipos conforme necessário
-                             // Ignora 'id' e deixa o IndexedDB gerar um novo
-                             ai: row.ai || 'Não Informada',
-                             homeTeam: row.homeTeam || '',
-                             awayTeam: row.awayTeam || '',
-                             matchDatetime: row.matchDatetime || '', // Mantém string
-                             favoriteTeam: row.favoriteTeam || 'Não Informado',
-                             // Converte para número ou null (trata strings vazias/inválidas)
-                             htScoreHome: row.htScoreHome === '' ? null : parseInt(row.htScoreHome),
-                             htScoreAway: row.htScoreAway === '' ? null : parseInt(row.htScoreAway),
-                             ftResult: row.ftResult || 'Não Informado',
-                             ftScoreHome: row.ftScoreHome === '' ? null : parseInt(row.ftScoreHome),
-                             ftScoreAway: row.ftScoreAway === '' ? null : parseInt(row.ftScoreAway),
-                             totalGoalsExact: row.totalGoalsExact === '' ? null : parseInt(row.totalGoalsExact), // Novo campo
-                             btts: row.btts || 'Não Informado',
-                             firstScorer: row.firstScorer || 'Não Informado',
-                             firstGoalMinuteSelect: row.firstGoalMinuteSelect || 'Não Informado',
-                             secondHalfGoal75: row.secondHalfGoal75 || 'Não Informado',
-                             // Tenta usar o createdAt do CSV ou um novo timestamp
-                             createdAt: parseInt(row.createdAt) || Date.now(),
-                         };
+                    let addedCount = 0;
+                    let errorCount = 0;
+                    let totalToImport = importedData.length;
+                    let processedCount = 0;
 
-                         // Remove campos que são undefined/null/vazio após conversão ou que não queremos salvar
-                         Object.keys(predictionData).forEach(key => {
-                              // Mantém 0, '', false, null, undefined para que parseInt retorne null em ''
-                              if (predictionData[key] === undefined || predictionData[key] === null || (typeof predictionData[key] === 'string' && predictionData[key].trim() === '')) {
-                                  // console.log(`Removing field ${key} with value ${predictionData[key]}`);
-                                  delete predictionData[key];
-                              } else if (typeof predictionData[key] === 'number' && isNaN(predictionData[key])) {
-                                   // Remove se for NaN após parseInt
-                                   // console.log(`Removing field ${key} with value NaN`);
-                                  delete predictionData[key];
-                              }
-                         });
-                         // Se o timestamp de criação não foi importado ou gerado, cria um agora
-                         if (!predictionData.createdAt) {
-                             predictionData.createdAt = Date.now();
-                         }
+                    for (const row of importedData) {
+                        processedCount++;
+                        const predictionData = {};
 
+                        // Jogo: "Time A vs Time B"
+                        if (row["Jogo"]) {
+                            const [home, away] = row["Jogo"].split(" vs ");
+                            predictionData.homeTeam = home ? home.trim() : '';
+                            predictionData.awayTeam = away ? away.trim() : '';
+                        }
 
-                         const addRequest = objectStore.add(predictionData);
+                        // Data/Hora
+                        if (row["Data/Hora"]) {
+                            // Tenta converter para ISO, mas mantém string se não conseguir
+                            const parts = row["Data/Hora"].split(" ");
+                            if (parts.length === 2) {
+                                const [date, time] = parts;
+                                // date: dd/mm/yyyy, time: hh:mm
+                                const [day, month, year] = date.split("/");
+                                if (day && month && year) {
+                                    predictionData.matchDatetime = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${time}:00`;
+                                } else {
+                                    predictionData.matchDatetime = row["Data/Hora"];
+                                }
+                            } else {
+                                predictionData.matchDatetime = row["Data/Hora"];
+                            }
+                        }
 
-                         addRequest.onsuccess = () => {
-                             addedCount++;
-                              processedCount++;
-                              if (processedCount === totalToImport) reportImportResult(addedCount, errorCount);
-                         };
-                         addRequest.onerror = (event) => {
-                             errorCount++;
-                             console.error("Error importing row:", row, event.target.error);
-                              processedCount++;
-                              if (processedCount === totalToImport) reportImportResult(addedCount, errorCount);
-                         };
-                     });
+                        // IA Utilizada, Favorito, Resultado FT, BTTS, Primeiro Gol, Minuto 1º Gol HT, Gol 2º Tempo (>75')
+                        ["IA Utilizada", "Favorito", "Resultado FT", "BTTS", "Primeiro Gol", "Minuto 1º Gol HT", "Gol 2º Tempo (>75')"].forEach(label => {
+                            if (row[label] !== undefined) {
+                                const prop = labelToProp[label];
+                                predictionData[prop] = row[label];
+                            }
+                        });
 
-                     function reportImportResult(added, errors) {
-                          alert(`Importação concluída. ${added} previsões adicionadas. ${errors} erros.`);
-                           loadPredictions(); // Recarrega a lista na home
-                           showScreen(homeScreen); // Volta para a tela home
-                           importFile.value = ''; // Limpa o input do arquivo
-                     }
+                        // Placar HT
+                        if (row["Placar HT"]) {
+                            if (row["Placar HT"].includes("-")) {
+                                const [htHome, htAway] = row["Placar HT"].split("-");
+                                predictionData.htScoreHome = htHome !== undefined && htHome !== '' ? parseInt(htHome) : null;
+                                predictionData.htScoreAway = htAway !== undefined && htAway !== '' ? parseInt(htAway) : null;
+                            } else if (row["Placar HT"] !== '') {
+                                predictionData.htScore = row["Placar HT"];
+                            }
+                        }
 
+                        // Placar FT
+                        if (row["Placar FT"]) {
+                            if (row["Placar FT"].includes("-")) {
+                                const [ftHome, ftAway] = row["Placar FT"].split("-");
+                                predictionData.ftScoreHome = ftHome !== undefined && ftHome !== '' ? parseInt(ftHome) : null;
+                                predictionData.ftScoreAway = ftAway !== undefined && ftAway !== '' ? parseInt(ftAway) : null;
+                            }
+                        }
+
+                        // Total Gols da partida
+                        if (row["Total Gols da partida"] !== undefined) {
+                            if (!isNaN(Number(row["Total Gols da partida"]))) {
+                                predictionData.totalGoalsExact = parseInt(row["Total Gols da partida"]);
+                            } else if (typeof row["Total Gols da partida"] === "string" && row["Total Gols da partida"].trim() !== "") {
+                                predictionData.totalGoals = row["Total Gols da partida"];
+                            }
+                        }
+
+                        // createdAt
+                        predictionData.createdAt = Date.now();
+
+                        // Remove campos inválidos
+                        Object.keys(predictionData).forEach(key => {
+                            const value = predictionData[key];
+                            const isRequired = ['homeTeam', 'awayTeam', 'matchDatetime', 'favoriteTeam', 'ftResult'].includes(key);
+                            const isEmptyOrInvalid = value === undefined || value === null || (typeof value === 'string' && value.trim() === '') || (typeof value === 'number' && isNaN(value));
+                            if (isEmptyOrInvalid && !isRequired) {
+                                delete predictionData[key];
+                            }
+                        });
+
+                        try {
+                            const addRequest = objectStore.add(predictionData);
+                            await new Promise((resolveReq, rejectReq) => {
+                                addRequest.onsuccess = () => {
+                                    addedCount++;
+                                    resolveReq();
+                                };
+                                addRequest.onerror = (event) => {
+                                    errorCount++;
+                                    resolveReq();
+                                };
+                            });
+                        } catch (reqError) {
+                            errorCount++;
+                        }
+                    }
+
+                    transaction.oncomplete = () => {
+                        alert(`Importação concluída. ${addedCount} previsões adicionadas. ${errorCount} erros.`);
+                        loadPredictions();
+                        showScreen(homeScreen);
+                        importFile.value = '';
+                    };
+
+                    transaction.onerror = (event) => {
+                        alert("Erro na transação de importação.");
+                        importFile.value = '';
+                        loadPredictions();
+                        showScreen(homeScreen);
+                    };
 
                 } catch (error) {
-                    console.error("Error parsing or importing CSV:", error);
-                    alert("Erro ao processar o arquivo CSV.");
-                     importFile.value = ''; // Limpa o input do arquivo
+                    console.error("Erro inesperado ao processar o arquivo XLSX:", error);
+                    alert("Erro ao processar o arquivo XLSX.");
+                    importFile.value = '';
                 }
             };
 
             reader.onerror = (event) => {
-                console.error("Error reading file:", event.target.error);
-                alert("Erro ao ler o arquivo.");
-                 importFile.value = ''; // Limpa o input do arquivo
+                let msg = "Erro ao ler o arquivo.";
+                if (event && event.target && event.target.error) {
+                    msg += " Detalhe: " + event.target.error.message;
+                    console.error("Erro detalhado ao ler o arquivo:", event.target.error);
+                }
+                alert(msg);
+                importFile.value = '';
             };
 
-            reader.readAsText(file); // Lê o arquivo como texto
+            reader.readAsArrayBuffer(file);
         }
 
 
         // --- Event Listeners ---
 
+        // Soma automática dos gols do Placar Final (FT) no campo Total de Gols Exato
+        function updateTotalGoalsExact() {
+            // Usa 0 caso o campo esteja vazio ou inválido
+            const home = parseInt(ftScoreHomeInput.value, 10);
+            const away = parseInt(ftScoreAwayInput.value, 10);
+            const total = (isNaN(home) ? 0 : home) + (isNaN(away) ? 0 : away);
+            totalGoalsExactInput.value = total;
+
+            // BTTS automático: "Sim" se ambos > 0, "Não" caso contrário
+            if (!isNaN(home) && !isNaN(away) && home > 0 && away > 0) {
+                bttsSelect.value = "Sim";
+            } else {
+                bttsSelect.value = "Não";
+            }
+        }
+
+        ftScoreHomeInput.addEventListener('input', updateTotalGoalsExact);
+        ftScoreAwayInput.addEventListener('input', updateTotalGoalsExact);
+
         // FAB Click
         fab.addEventListener('click', () => {
+            console.log("FAB clicked. Showing Choose AI screen.");
             // Reseta o currentAI para forçar a escolha na próxima tela
             currentAI = null;
-            // Reseta o formulário para garantir que não está em modo edição
+            // Reseta o formulário para garantir que não está em modo edição ao iniciar um novo registro
              resetForm();
             showScreen(chooseAiScreen);
         });
@@ -1604,27 +1799,32 @@
 
         // Navegação do Menu
         menuLinks.forEach(link => {
-             link.addEventListener('click', (event) => {
-                 event.preventDefault(); // Impede o comportamento padrão do link
-                 const targetScreenId = link.dataset.screen;
-                 const targetScreen = document.getElementById(targetScreenId);
-                 if (targetScreen) {
-                      // Reseta o currentAI e o formulário ao navegar pelo menu
-                      currentAI = null;
-                      resetForm();
-                     showScreen(targetScreen);
-                 }
-             });
+            link.addEventListener('click', (event) => {
+                // Só previne o comportamento padrão se o href for "#"
+                if (link.getAttribute('href') === '#') {
+                    event.preventDefault();
+                    const targetScreenId = link.dataset.screen;
+                    const targetScreen = document.getElementById(targetScreenId);
+                    if (targetScreen) {
+                        console.log(`Menu link clicked: ${targetScreenId}. Showing screen.`);
+                        // Reseta o currentAI e o formulário ao navegar pelo menu (evita edição acidental)
+                        currentAI = null;
+                        resetForm();
+                        showScreen(targetScreen);
+                    }
+                }
+                // Se o href não for "#", deixa o navegador seguir o link normalmente (ex: dashboard.html)
+            });
         });
 
 
         // Escolha da IA (botões Grok, OpenAI, Perplexity)
         document.querySelectorAll('.ai-choice-button').forEach(button => {
              button.addEventListener('click', (event) => {
-                console.log(`${event.target.dataset.ai} button clicked`);
+                console.log(`${event.target.dataset.ai} button clicked. Setting AI and showing Add Prediction screen.`);
                 currentAI = event.target.dataset.ai;
                 selectedAiDisplay.textContent = currentAI;
-                formTitle.textContent = `Registrar Previsão - ${currentAI}`;
+                formTitle.textContent = `Registrar Partida Nova - ${currentAI}`;
                 resetForm(); // Reseta o formulário (limpa dados anteriores e ID de edição)
                 showScreen(addPredictionScreen);
              });
@@ -1632,7 +1832,7 @@
 
 
          cancelChooseAiBtn.addEventListener('click', () => {
-              console.log('Cancel Choose AI button clicked');
+              console.log('Cancel Choose AI button clicked. Showing Home screen.');
              currentAI = null; // Cancela a escolha da IA
              showScreen(homeScreen); // Volta para a Home
          });
@@ -1640,6 +1840,7 @@
 
         // Cancelar Adicionar/Editar Previsão
         cancelAddPredictionBtn.addEventListener('click', () => {
+            console.log("Cancel Add/Edit button clicked. Showing Home screen.");
             resetForm(); // Reseta o formulário e limpa o ID de edição
             currentAI = null; // Cancela a IA selecionada
             showScreen(homeScreen); // Volta para a Home
@@ -1651,55 +1852,58 @@
             event.preventDefault(); // Previne o recarregamento da página
 
             const idToEdit = editingIdInput.value; // Pega o ID do campo escondido
+            const isUpdate = idToEdit !== '';
 
             // Se for um novo registro, verifica se a IA foi selecionada na tela anterior
-            if (!idToEdit && !currentAI) {
+            if (!isUpdate && !currentAI) {
                  alert("Erro interno: IA não selecionada para novo registro.");
                  showScreen(homeScreen); // Volta para a home se ocorrer erro
                  return;
             }
 
              // Validação básica dos campos obrigatórios
+             // Nota: Placares e minutos do gol não são obrigatórios, apenas o Resultado 1X2 e dados da partida
             if (!homeTeamInput.value.trim() || !awayTeamInput.value.trim() || !matchDatetimeInput.value || favoriteTeamSelect.value === "" || ftResultSelect.value === "") {
                 alert("Por favor, preencha os campos obrigatórios: Time da Casa, Time Visitante, Data/Hora, Favorito, Resultado Final (1X2).");
                 return;
             }
 
             const predictionData = {
-                // Inclui o ID apenas se estiver editando
-                ...(idToEdit && { id: parseInt(idToEdit) }),
+                // Inclui o ID apenas se estiver editando, convertendo para número
+                ...(isUpdate && { id: parseInt(idToEdit) }),
                 ai: currentAI || selectedAiDisplay.textContent || 'Não Informada', // Usa currentAI para novo, ou o exibido para edição
                 homeTeam: homeTeamInput.value.trim(),
                 awayTeam: awayTeamInput.value.trim(),
                 matchDatetime: matchDatetimeInput.value, // Mantém o formato datetime-local para salvar
                 favoriteTeam: favoriteTeamSelect.value,
                 // Pega valor numérico, usa null se vazio, 0 se '0'. Trata NaN.
-                htScoreHome: htScoreHomeInput.value === '' ? null : parseInt(htScoreHomeInput.value),
-                htScoreAway: htScoreAwayInput.value === '' ? null : parseInt(htScoreAwayInput.value),
+                htScoreHome: htScoreHomeInput.value.trim() === '' ? null : parseInt(htScoreHomeInput.value),
+                htScoreAway: htScoreAwayInput.value.trim() === '' ? null : parseInt(htScoreAwayInput.value),
                 ftResult: ftResultSelect.value,
-                ftScoreHome: ftScoreHomeInput.value === '' ? null : parseInt(ftScoreHomeInput.value),
-                ftScoreAway: ftScoreAwayInput.value === '' ? null : parseInt(ftScoreAwayInput.value),
-                totalGoalsExact: totalGoalsExactInput.value === '' ? null : parseInt(totalGoalsExactInput.value), // Novo campo
+                ftScoreHome: ftScoreHomeInput.value.trim() === '' ? null : parseInt(ftScoreHomeInput.value),
+                ftScoreAway: ftScoreAwayInput.value.trim() === '' ? null : parseInt(ftScoreAwayInput.value),
+                totalGoalsExact: totalGoalsExactInput.value.trim() === '' ? null : parseInt(totalGoalsExactInput.value), // Novo campo
                 btts: bttsSelect.value,
                 firstScorer: firstScorerSelect.value,
                 firstGoalMinuteSelect: firstGoalMinuteSelect.value,
                 secondHalfGoal75: secondHalfGoal75Select.value,
+                // createdAt será adicionado na função addOrUpdatePrediction para novos registros
             };
 
-             // Remove campos que resultaram em NaN após parseInt ou que são null/vazios (exceto os required)
+             // Remove campos que resultaram em NaN após parseInt ou que são null/vazios (não obrigatórios)
             Object.keys(predictionData).forEach(key => {
-                 // Mantém campos required mesmo se vazios no objeto para validação (embora já feita acima)
-                 if (key !== 'homeTeam' && key !== 'awayTeam' && key !== 'matchDatetime' && key !== 'favoriteTeam' && key !== 'ftResult') {
-                     if (predictionData[key] === undefined || predictionData[key] === null || (typeof predictionData[key] === 'string' && predictionData[key].trim() === '')) {
-                         delete predictionData[key];
-                     } else if (typeof predictionData[key] === 'number' && isNaN(predictionData[key])) {
-                         delete predictionData[key]; // Remove NaN
-                     }
+                 const value = predictionData[key];
+                 const isRequired = ['homeTeam', 'awayTeam', 'matchDatetime', 'favoriteTeam', 'ftResult'].includes(key);
+                 // Remove se for undefined, null, string vazia após trim() (exceto required)
+                 // ou se for NaN após parseInt de um campo numérico
+                 if ((value === undefined || value === null || (typeof value === 'string' && value.trim() === '') || (typeof value === 'number' && isNaN(value))) && !isRequired) {
+                      delete predictionData[key];
                  }
+                 // Note: Se um campo numérico required (como placar se tornasse required) for 0, ele seria mantido corretamente por parseInt(0)
             });
 
 
-            await addOrUpdatePrediction(predictionData); // Usa a nova função que decide adicionar ou atualizar
+            await addOrUpdatePrediction(predictionData); // Usa a função que decide adicionar ou atualizar
         });
 
          // Event Delegation para botões Editar/Excluir na lista
@@ -1708,7 +1912,12 @@
 
              // Clicou no botão Editar?
              if (target.classList.contains('edit-btn')) {
-                 const id = parseInt(target.dataset.id); // Pega o ID do atributo data-id
+                 // Confirma que o botão tem um data-id e é um número válido
+                 const id = parseInt(target.dataset.id);
+                 if (isNaN(id)) {
+                      console.error("Invalid ID for edit:", target.dataset.id);
+                      return;
+                 }
                  console.log('Edit button clicked for ID:', id);
                  const predictionToEdit = await getPredictionById(id);
                  if (predictionToEdit) {
@@ -1716,41 +1925,55 @@
                      showScreen(addPredictionScreen); // Mostra a tela do formulário
                  } else {
                      alert("Previsão não encontrada para edição.");
+                     loadPredictions(); // Recarrega a lista caso o item tenha sumido por algum motivo
                  }
              }
 
              // Clicou no botão Excluir?
              if (target.classList.contains('delete-btn')) {
-                 const id = parseInt(target.dataset.id); // Pega o ID do atributo data-id
+                 // Confirma que o botão tem um data-id e é um número válido
+                  const id = parseInt(target.dataset.id);
+                  if (isNaN(id)) {
+                       console.error("Invalid ID for delete:", target.dataset.id);
+                       return;
+                  }
                   console.log('Delete button clicked for ID:', id);
                  if (confirm("Tem certeza que deseja excluir esta previsão?")) {
-                     await deletePrediction(id); // Chama a função de exclusão
+                     await deletePrediction(id); // Chama a função de exclusão (que recarrega a lista)
                  }
              }
         });
 
 
         // Evento do botão Exportar CSV
-        exportCsvBtn.addEventListener('click', exportPredictionsCsv);
+        exportCsvBtn.addEventListener('click', exportPredictionsXlsx);
 
         // Evento do botão Importar CSV
         importCsvBtn.addEventListener('click', () => {
-             importPredictionsCsv(importFile.files[0]); // Pega o primeiro arquivo selecionado
+            if (importFile.files.length > 0) {
+                importPredictionsXlsx(importFile.files[0]);
+            } else {
+                alert("Por favor, selecione um arquivo XLSX para importar.");
+            }
         });
 
 
         // --- Inicialização ---
         document.addEventListener('DOMContentLoaded', async () => {
+            console.log("DOMContentLoaded: Initializing app.");
             try {
                 await openDB(); // Abre/Cria/Atualiza o banco de dados
                 console.log("IndexedDB opened successfully.");
-                loadPredictions(); // Carrega e exibe as previsões existentes na Home
-                 // Mostra a tela Home por padrão
+                await loadPredictions(); // Carrega e exibe as previsões existentes na Home
+                 // Mostra a tela Home por padrão *após* carregar os dados iniciais
                  showScreen(homeScreen);
+                 console.log("Initialization complete. Home screen displayed.");
             } catch (error) {
                 console.error("Failed to initialize IndexedDB:", error);
                  predictionsList.innerHTML = '<li class="prediction-item">Erro ao inicializar o banco de dados local. As previsões não serão salvas ou carregadas.</li>';
                  dashboardLoadingMessage.textContent = 'Erro ao carregar dados para o Dashboard.';
+                 // Mesmo com erro no DB, tenta mostrar a Home (embora vazia/com erro)
+                 showScreen(homeScreen);
             }
         });
 
